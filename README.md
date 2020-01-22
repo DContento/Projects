@@ -1,2 +1,3 @@
 # Past-Projects
-Projects that i have either solely worked on or contributed too (School and Work)
+Past school or work projects that i have contributed too or solely worked on
+
