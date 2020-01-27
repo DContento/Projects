@@ -1,0 +1,1378 @@
+---
+title: "Project 1"
+author: "David Contento"
+date: "October 27, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Question 1
+
+##Part A) Bootstraping
+```{r, message=F}
+library(AER)
+```
+
+Using the "Affairs" data set, we created a linear regression model that tested the dependency of number of affairs a subject had with the subject's age and years married.
+
+
+```{r}
+data("Affairs")
+head(Affairs)
+relation<-lm(affairs~age+yearsmarried, data=Affairs)
+summary(relation)
+```
+As we can see above, the LS estimates of our parameters are all statistically significant at the 5% level, meaning there is at least a 95% chance our parameters are statistically significant to our dependent variable of total number of affairs. The below code represents the confidence interval for each parameter.
+
+```{r}
+CI1<-confint(relation,'(Intercept)', level= 0.95)
+CI1
+CI2<-confint(relation,'age', level= 0.95)
+CI2
+CI3<-confint(relation,'yearsmarried', level= 0.95)
+CI3
+```
+
+We then bootstrap our LS estimates along with their respective confidence intervals below:
+
+```{r}
+betaestimates<-NULL
+coint1<-NULL
+coint2<-NULL
+coint3<-NULL
+
+n=length(Affairs$affairs)
+y=1000
+
+for(draw in 1:y){
+  bootstrap= Affairs[sample(1:n, size=n, replace=TRUE),]
+  linear= lm(affairs~age+yearsmarried, data=bootstrap)
+  betaestimates= rbind(betaestimates,coef(linear))
+  
+  coint1=rbind(coint1,confint(linear,'(Intercept)',level=0.95))
+  coint2=rbind(coint2,confint(linear,'age',level=0.95))
+  coint3=rbind(coint3,confint(linear,'yearsmarried',level=0.95))
+}
+
+
+```
+
+The following plots the bootstrapped estimates and their respective confidence intervals vs. the number of trials:
+
+```{r}
+
+library(gplots)
+plotCI(1:1000,betaestimates[,1],ui=coint1[,2], li=coint1[,1], ylab="intercept", xlab="trials", main= "bootstrap estimates of intercept and CIs")
+
+abline(h=1.53484,col="purple")
+abline(h=0.4592265,col="gold")
+abline(h=2.61045,col="green")
+```
+
+
+```{r}
+plotCI(1:1000,betaestimates[,2],ui=coint2[,2], li=coint2[,1], ylab="age", xlab="trials", main= "bootstrap estimates of age and CIs")
+
+abline(h=-0.04494, col="purple")
+abline(h=-0.08935362, col="gold")
+abline(h=-0.0005309759, col="green")
+```
+
+```{r}
+plotCI(1:1000,betaestimates[,3],ui=coint3[,2], li=coint3[,1], ylab="yearsmarried", xlab="trials", main= "bootstrap estimates of yearsmarried and CIs")
+
+abline(h=0.16889, col="purple")
+abline(h=0.09484536, col="gold")
+abline(h=0.242935, col="green")
+```
+
+The purple line represents the LS estimates of each respective parameter; the gold line represents the lower limit of the confidence intervals, and the green line represents the upper limit of the confidence intervals.
+
+Based on these plots, we can determine that the bootstrap estimates are stable, as most of the trial estimates fall within the same range as our LS estimates.
+
+##Part B) Markov Chain Monte Carlo
+
+First, we must run a Bayesian regression using MCMC and analyze 
+the estimates:
+
+```{r, message=F}
+library(MCMCpack)
+linear.MCMC<-MCMCregress(affairs~age+yearsmarried, data=Affairs,burnin=100,mcmc=1000,thin=1,b0=c(0,0,0),B0=c(0,0,0),c0=0.001, d0=0.001)
+summary(linear.MCMC)
+```
+In order to view the Bayesian regression's respective credible intervals:
+
+```{r}
+HPDinterval(linear.MCMC)
+
+```
+
+
+Now we will plot the respective parameter posterior distributions and credible intervals:
+
+```{r, message=F}
+library(bayesplot)
+post<-as.array(linear.MCMC)
+
+color_scheme_set("red")
+pmcmc <-mcmc_hist(post,pars=c("(Intercept)"))
+pmcmc + vline_at(0.58086335, linetype = 1, size = 1, color = "green") + vline_at(2.663640909, linetype = 1, size = 1, color = "blue") 
+```
+
+```{r, message=F}
+color_scheme_set("red")
+pmcmc <-mcmc_hist(post,pars=c("age"))
+pmcmc + vline_at(-0.09299628, linetype = 1, size = 1, color = "green") + vline_at(-0.007357002, linetype = 1, size = 1, color = "blue") 
+```
+
+```{r, message=F}
+color_scheme_set("red")
+pmcmc <-mcmc_hist(post,pars=c("yearsmarried"))
+pmcmc + vline_at(0.10054704, linetype = 1, size = 1, color = "green") + vline_at(0.245405672, linetype = 1, size = 1, color = "blue") 
+```
+
+The estimates from our Bayesian regression compare favorably to the estimates from our LS and Bootstrapped estimates.
+
+##Part C) Analysis 
+
+All three methods produced relatively comparable results. In our opinion, we would favor the Bayesian method. This is because the Bayesian method accounts for any potentially new information that could influence our results. The LS and Bootstrapped methods assume that there is enough data in our data set of 601 observations to make substantial inferences about how dependent our "affairs" variable is to the "age" and "years married" variable. The Bayesian method accounts for more information, and therefore a  more accurate interpretation.
+
+#Question 2
+
+##Part A) Creating Histograms and Density Curves for Data Sets
+```{r, echo=F, include=F}
+library(Quandl)
+library(tseries)
+library(vars)
+library(tis)
+library(quantmod)
+library(dplyr)
+library(fitdistrplus)
+```
+
+###-Histogram and Density Curve of S&P500 Index Data
+```{r, message=F}
+setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 1")
+library(readr)
+sp500=read_csv("sp500.csv")
+sp500_close=as.numeric(sp500$Close)
+hist(sp500_close, freq=F, col="skyblue3", main="Histogram of S&P500 Index (1950-2018)", xlab="Index values")
+lines(density(sp500_close), col="red")
+```
+
+###-Histogram and Density Curve of Yield Spread Data
+```{r, message=F}
+setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 1")
+library(readr)
+Yield_Spread=read_csv("Yield Spread.csv")
+hist(Yield_Spread$T10Y3M, freq=F, col="skyblue3", main="Histogram of Yield Spread Data (1960-2018)", xlab="Yield Spread")
+lines(density(Yield_Spread$T10Y3M), col="red")
+```
+
+###-Histogram and Density Curve of Three Month Treasurybill Data 
+```{r, message=F}
+setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 1")
+library(readr)
+Three_treasury=read_csv("tmo.csv")
+hist(Three_treasury$TB3MS, freq=F, col="skyblue3", main="Histogram of Three Month Treasuerybill Rates (1934-2018)", xlab="Rates")
+lines(density(Three_treasury$TB3MS), col="red")
+```
+
+###-Histogram and Density Curve of Japanese Central Bank Interest Rate
+```{r,message=F}
+setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 1")
+library(readr)
+Japanese_central_bank=read_csv("Japanese central bank.csv")
+hist(Japanese_central_bank$INTDSRJPM193N, freq=F, col="skyblue3", main="Histogram of Japanese Central Bank Interest Rates (1953-2018)", xlab="Interest Rate")
+lines(density(Japanese_central_bank$INTDSRJPM193N), col="red")
+```
+
+##Part B) Fitting Distributions To The Datasets
+
+###I) Fitting Distributions To S&P500 Index Data 
+
+First we used a Cullen-Frey test in order to determine which distributions fit our data the best.
+
+```{r, echo=F}
+descdist(sp500_close, discrete = FALSE)
+```
+
+We used the following code to fit the closest distribution's our Cullen-Frey graph suggested for our data. The command fitdist, which can be seen below, uses MLE to find the parameters that would best fit the distributions to the data set. 
+
+```{r}
+sp500.lognorm=fitdist(as.numeric(sp500_close),"lnorm")
+sp500.weibull=fitdist(as.numeric(sp500_close), "weibull")
+sp500.lognorm
+sp500.weibull
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Weibull")
+qqcomp(list(sp500.lognorm, sp500.weibull), legendtext=plot.legend)
+cdfcomp(list(sp500.lognorm, sp500.weibull), legendtext=plot.legend)
+ppcomp(list(sp500.lognorm, sp500.weibull), legendtext=plot.legend)
+denscomp(list(sp500.lognorm, sp500.weibull), legendtext=plot.legend)
+```
+
+The histograms and theoretical densities graph above shows the histogram of the S&P500 data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r, echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("weibull")
+denscomp(sp500.weibull, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Weibull distribution. 
+
+We reused much of the code we created for the S&P500 index data for the three other data sets. Therefore, in order to prevent unnecessary redundancy much of the code is not shown again since only variable names are changed. 
+
+###II) Fitting Distributions To The Yield Spread Data Set
+
+For the Yield spread data, we again ran a Cullen-Frey test in order to determine which distributions our data fit the closest.
+
+```{r, echo=F}
+descdist(Yield_Spread$T10Y3M, discrete = FALSE)
+```
+
+Using the code we created before, we fit the distributions the Cullen-Frey test suggested. According to the Cullen-Frey graph a uniform or normal distribution would best fit our data. The fitdist command uses MLE to find the parameters that would best fit the distribution to the data. 
+
+```{r,echo=F}
+yieldspread.unif=fitdist(as.numeric(Yield_Spread$T10Y3M),"unif")
+yieldspread.norm=fitdist(as.numeric(Yield_Spread$T10Y3M), "norm")
+yieldspread.unif
+yieldspread.norm
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r, echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("Uniform","Normal")
+qqcomp(list(yieldspread.unif,  yieldspread.norm), legendtext=plot.legend)
+cdfcomp(list(yieldspread.unif,  yieldspread.norm), legendtext=plot.legend)
+ppcomp(list(yieldspread.unif,  yieldspread.norm), legendtext=plot.legend)
+denscomp(list(yieldspread.unif, yieldspread.norm), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the yield spread data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r, echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Uniform")
+denscomp( yieldspread.unif, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Uniform distribution. 
+
+###III) Fitting Distributions To The Three Month Treasury Rate Data
+
+The first thing we did is construct a Cullen-Frey graph using the data set.
+
+```{r, echo=F}
+descdist(Three_treasury$TB3MS, discrete = FALSE)
+```
+
+Using the same code we used for the other data sets, we fit the suggested distributions from the Cullen-Frey graph to the three month treasury rate data using MLE. The fitdist command uses MLE in order to find the parameters that would best fit the data for each distribution. 
+
+```{r, echo=F}
+threetre.lognorm=fitdist(as.numeric(Three_treasury$TB3MS),"lnorm")
+threetre.lognorm
+threetre.gamma=fitdist(as.numeric(Three_treasury$TB3MS), "gamma")
+threetre.gamma
+threetre.weibull=fitdist(as.numeric(Three_treasury$TB3MS), "weibull")
+threetre.weibull
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r, echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Gamma","Weibull")
+qqcomp(list(threetre.lognorm, threetre.gamma, threetre.weibull), legendtext=plot.legend)
+cdfcomp(list(threetre.lognorm, threetre.gamma, threetre.weibull), legendtext=plot.legend)
+ppcomp(list(threetre.lognorm, threetre.gamma, threetre.weibull), legendtext=plot.legend)
+denscomp(list(threetre.lognorm, threetre.gamma, threetre.weibull), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the three month treasury bill data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Gamma")
+denscomp(list(threetre.gamma), legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Gamma distribution. 
+
+###IV) Fitting Distributions to the Japanese Central Bank's Interest Rates
+
+Similar to what we did with the other three data sets we used a Cullen-Frey test in order to determine which distributions our data closely represented. 
+
+```{r,echo=F}
+descdist(Japanese_central_bank$INTDSRJPM193N, discrete = FALSE)
+```
+
+Using the same Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r, echo=F}
+japcen.unif=fitdist(as.numeric(Japanese_central_bank$INTDSRJPM193N),"unif")
+japcen.unif
+japcen.lnorm=fitdist(as.numeric(Japanese_central_bank$INTDSRJPM193N), "lnorm")
+japcen.lnorm
+japcen.norm=fitdist(as.numeric(Japanese_central_bank$INTDSRJPM193N), "norm")
+japcen.norm
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r, echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("Uniform","log Normal","Normal")
+qqcomp(list(japcen.unif, japcen.lnorm, japcen.norm), legendtext=plot.legend)
+cdfcomp(list(japcen.unif, japcen.lnorm, japcen.norm), legendtext=plot.legend)
+ppcomp(list(japcen.unif, japcen.lnorm, japcen.norm), legendtext=plot.legend)
+denscomp(list(japcen.unif, japcen.lnorm, japcen.norm), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the Japanese central bank interest rate data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Uniform")
+denscomp(japcen.unif, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Uniform distribution. 
+
+##Part C) Subsetting The Data Into Period's of Recessions and Fitting Appropriate Distributions.
+
+###Subsetting S&P500 Index Data (recession)
+
+Using the following code we were able to subset the S&P500 data to include points generated only in times of recession. Using the FRED database we were also able to find the dates when the U.S. was experiencing a recession.
+We included these dates in our code, which can be seen below. 
+
+```{r}
+myfunc=function(x,y){sp500[sp500$Date >= x & sp500$Date <= y,]}
+rec1=myfunc("1950-02-01","1954-05-01")
+rec2=myfunc("1957-08-01","1958-04-01")
+rec3=myfunc("1960-04-01","1961-02-01")
+rec4=myfunc("1969-12-01","1970-11-01")
+rec5=myfunc("1973-11-01","1975-03-01")
+rec6=myfunc("1980-01-01","1980-07-01")
+rec7=myfunc("1981-07-01","1982-11-01") 
+rec8=myfunc("1990-07-01","1991-03-01")
+rec9=myfunc("2001-03-01","2001-11-01")
+rec10=myfunc("2007-12-01","2009-06-01")
+```
+```{r,echo=F}
+rec1=rec1$Close
+rec2=rec2$Close
+rec3=rec3$Close
+rec4=rec4$Close
+rec5=rec5$Close
+rec6=rec6$Close
+rec7=rec7$Close
+rec8=rec8$Close
+rec9=rec9$Close
+rec10=rec10$Close
+sp500rec=c(rec1, rec2 , rec3 , rec4 , rec5, rec6 , rec7, rec8, rec9, rec10)
+```
+
+Below is a histogram of the subset S&P500 (recession) data along with its respective density curve. 
+
+```{r, echo=F}
+hist(sp500rec, freq=F, col="skyblue3", main="Histogram of Subset S&P500 Data (Recession)", xlab="Index Value")
+lines(density(sp500rec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (recession) S&P500 data. This graph shows us which distributions our data closely resembles. 
+
+```{r,echo=F}
+descdist(sp500rec, discrete = FALSE)
+```
+
+Using the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+sp500rec.lognorm=fitdist(as.numeric(sp500rec),"lnorm")
+sp500rec.lognorm
+sp500rec.weibull=fitdist(as.numeric(sp500rec), "weibull")
+sp500rec.weibull
+sp500rec.gamma=fitdist(as.numeric(sp500rec), "gamma")
+sp500rec.gamma
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r, echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Weibull", "Gamma")
+qqcomp(list(sp500rec.lognorm, sp500rec.weibull,sp500rec.gamma), legendtext=plot.legend)
+cdfcomp(list(sp500rec.lognorm, sp500rec.weibull,sp500rec.gamma), legendtext=plot.legend)
+ppcomp(list(sp500rec.lognorm, sp500rec.weibull,sp500rec.gamma), legendtext=plot.legend)
+denscomp(list(sp500rec.lognorm, sp500rec.weibull,sp500rec.gamma), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the S&P500 data (recession) along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Gamma")
+denscomp(sp500rec.gamma,legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Gamma distribution. 
+
+###Subsetting Three Month Treasury Bill Data (recession)
+
+Using the following code we were able to subset the three month treasury bill data to include points generated only in times of recession. Using the FRED database we were also able to find the dates when the U.S. was experiencing a recession. We included these dates in our code, which can be seen below. 
+
+```{r}
+myfunc=function(x,y){Three_treasury[Three_treasury$DATE >= x & Three_treasury$DATE <= y,]}
+rec1=myfunc("1937-05-01","1938-06-01")
+rec2=myfunc("1945-02-01","1945-10-01")
+rec3=myfunc("1948-11-01","1949-10-01")
+rec4=myfunc("1953-07-01","1954-05-01")
+rec5=myfunc("1957-08-01","1958-04-01")
+rec6=myfunc("1960-04-01","1961-02-01")
+rec7=myfunc("1969-12-01","1970-11-01")
+rec8=myfunc("1973-11-01","1975-03-01")
+rec9=myfunc("1980-01-01","1980-07-01")
+rec10=myfunc("1981-07-01","1982-11-01") 
+rec11=myfunc("1990-07-01","1991-03-01")
+rec12=myfunc("2001-03-01","2001-11-01")
+rec13=myfunc("2007-12-01","2009-06-01")
+```
+```{r,echo=F}
+rec1=rec1$TB3MS
+rec2=rec2$TB3MS
+rec3=rec3$TB3MS
+rec4=rec4$TB3MS
+rec5=rec5$TB3MS
+rec6=rec6$TB3MS
+rec7=rec7$TB3MS
+rec8=rec8$TB3MS
+rec9=rec9$TB3MS
+rec10=rec10$TB3MS
+rec11=rec11$TB3MS
+rec12=rec12$TB3MS
+rec13=rec13$TB3MS
+Three_treasuryrec=c(rec1,rec2,rec3,rec4,rec5,rec6,rec7,rec8,rec9,rec10,rec11,rec12,rec13)
+hist(Three_treasuryrec, freq=F, col="skyblue3", main="Histogram of Subset Three Month Treasurybill Data (Recession)", xlab="Rate")
+lines(density(Three_treasuryrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (recession) three month treasury bill data. This graph shows us which distributions our data closely resembles. 
+
+```{r,echo=F}
+descdist(Three_treasuryrec, discrete = FALSE)
+```
+
+With the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+threetrerec.lognorm=fitdist(as.numeric(Three_treasuryrec),"lnorm")
+threetrerec.lognorm
+threetrerec.gamma=fitdist(as.numeric(Three_treasuryrec), "gamma")
+threetrerec.gamma
+threetrerec.weibull=fitdist(as.numeric(Three_treasuryrec), "weibull")
+threetrerec.weibull
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Gamma","Weibull")
+qqcomp(list(threetrerec.lognorm, threetrerec.gamma, threetrerec.weibull), legendtext=plot.legend)
+cdfcomp(list(threetrerec.lognorm, threetrerec.gamma, threetrerec.weibull), legendtext=plot.legend)
+ppcomp(list(threetrerec.lognorm, threetrerec.gamma, threetrerec.weibull), legendtext=plot.legend)
+denscomp(list(threetrerec.lognorm, threetrerec.gamma, threetrerec.weibull), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the three month treasury bill data (recession) along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Weibull")
+denscomp(threetrerec.weibull, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Weibull distribution. 
+
+###Subsetting Yield spread Data (recession)
+
+Using the following code we were able to subset the Yield spread data to include points generated only in times of recession. Using the FRED database we were also able to find the dates when the U.S. was experiencing a recession. We included these dates in our code, which can be seen below. 
+
+```{r}
+myfunc=function(x,y){Yield_Spread[Yield_Spread$DATE >= x & Yield_Spread$DATE <= y,]}
+rec1=myfunc("1960-04-01","1961-02-01")
+rec2=myfunc("1969-12-01","1970-11-01")
+rec3=myfunc("1973-11-01","1975-03-01")
+rec4=myfunc("1980-01-01","1980-07-01")
+rec5=myfunc("1982-01-01","1982-11-01") 
+rec6=myfunc("1990-07-01","1991-03-01")
+rec7=myfunc("2001-03-01","2001-11-01")
+rec8=myfunc("2007-12-01","2009-06-01")
+```
+```{r, echo=F}
+rec1=rec1$T10Y3M
+rec2=rec2$T10Y3M
+rec3=rec3$T10Y3M
+rec4=rec4$T10Y3M
+rec5=rec5$T10Y3M
+rec6=rec6$T10Y3M
+rec7=rec7$T10Y3M
+rec8=rec8$T10Y3M
+yield_spreadrec=c(rec5,rec6,rec7,rec8)
+hist(yield_spreadrec, freq=F, col="skyblue3",main="Histogram of subset yield spread data (recession)", xlab=" yield spread")
+lines(density(yield_spreadrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (recession) yield spread data. This graph shows us which distributions our data closely resembles. 
+
+```{r,echo=F}
+descdist(yield_spreadrec, discrete = FALSE)
+```
+
+Using the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+yieldspreadrec.lnorm=fitdist(as.numeric(yield_spreadrec),"lnorm")
+yieldspreadrec.lnorm
+yieldspreadrec.norm=fitdist(as.numeric(yield_spreadrec), "norm")
+yieldspreadrec.norm
+yieldspreadrec.gamma=fitdist(as.numeric(yield_spreadrec),"gamma")
+yieldspreadrec.gamma
+yieldspreadrec.weibull=fitdist(as.numeric(yield_spreadrec),"weibull")
+yieldspreadrec.weibull
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("Log normal","normal", "gamma", "weibull")
+qqcomp(list(yieldspreadrec.lnorm, yieldspreadrec.norm, yieldspreadrec.gamma, yieldspreadrec.weibull), legendtext=plot.legend)
+cdfcomp(list(yieldspreadrec.lnorm, yieldspreadrec.norm, yieldspreadrec.gamma, yieldspreadrec.weibull), legendtext=plot.legend)
+ppcomp(list(yieldspreadrec.lnorm, yieldspreadrec.norm, yieldspreadrec.gamma, yieldspreadrec.weibull), legendtext=plot.legend)
+denscomp(list(yieldspreadrec.lnorm, yieldspreadrec.norm, yieldspreadrec.gamma, yieldspreadrec.weibull), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the yield spread data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Normal")
+denscomp(yieldspreadrec.norm, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Normal distribution. 
+
+###Subsetting Japanese Central Bank Interest Rate data (based on OECD recession indicators)
+
+Using the following code we were able to subset the Japanese Central bank interest rate data to include points generated only in times of recession. Using the FRED database we were also able to find the dates when when Japan experienced a recession (according to OECD recession based indicators). We included these dates in our code, which can be seen below. 
+
+```{r}
+myfunc=function(x,y){Japanese_central_bank[Japanese_central_bank$DATE >= x & Japanese_central_bank$DATE <= y,]}
+rec1=myfunc("1953-07-01","1954-05-01")
+rec2=myfunc("1957-08-01","1958-04-01")
+rec3=myfunc("1960-11-01","1961-02-01")
+rec4=myfunc("1961-12-01","1963-02-01")
+rec5=myfunc("1964-04-01","1965-11-01")
+rec6=myfunc("1970-03-01","1971-10-01")
+rec7=myfunc("1973-04-01","1975-02-01")
+rec8=myfunc("1979-06-01","1980-05-01")
+rec9=myfunc("1982-03-01","1983-05-01")
+rec10=myfunc("1985-09-01","1987-02-01") 
+rec11=myfunc("1990-08-01","1994-10-01")
+rec12=myfunc("1997-01-01","1999-05-01")
+rec13=myfunc("2001-01-01","2002-01-01")
+rec14=myfunc("2004-03-01","2004-12-01")
+rec15=myfunc("2008-02-01","2009-04-01")
+rec16=myfunc("2010-08-01","2012-09-01")
+rec17=myfunc("2013-10-01","2015-12-01")
+```
+```{r, echo=F}
+rec1=rec1$INTDSRJPM193N
+rec2=rec2$INTDSRJPM193N
+rec3=rec3$INTDSRJPM193N
+rec4=rec4$INTDSRJPM193N
+rec5=rec5$INTDSRJPM193N
+rec6=rec6$INTDSRJPM193N
+rec7=rec7$INTDSRJPM193N
+rec8=rec8$INTDSRJPM193N
+rec9=rec9$INTDSRJPM193N
+rec10=rec10$INTDSRJPM193N
+rec11=rec11$INTDSRJPM193N
+rec12=rec12$INTDSRJPM193N
+rec13=rec13$INTDSRJPM193N
+rec14=rec14$INTDSRJPM193N
+rec15=rec15$INTDSRJPM193N
+rec16=rec16$INTDSRJPM193N
+rec17=rec17$INTDSRJPM193N
+japcenrec=c(rec1,rec2,rec3,rec4,rec5,rec6,rec7,rec8,rec9,rec10,rec11,rec12,rec13,rec14,rec15,rec16,rec17)
+hist(japcenrec, freq=F, col="skyblue3",main="Japanese central bank interest rate (recession)", xlab="Interest rate")
+lines(density(japcenrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (recession) Japanese central bank interest rate data. This graph shows us which distributions our data closely resembles. Using it we can determine which graph will best fit out data.
+
+```{r,echo=F}
+descdist(japcenrec, discrete = FALSE)
+```
+
+Using the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution. 
+
+```{r,echo=F}
+japcenrec.unif=fitdist(as.numeric(japcenrec),"unif")
+japcenrec.unif
+japcenrec.lnorm=fitdist(as.numeric(japcenrec), "lnorm")
+japcenrec.lnorm
+japcenrec.norm=fitdist(as.numeric(japcenrec), "norm")
+japcenrec.norm
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("uniform","log normal","normal")
+qqcomp(list(japcenrec.unif, japcenrec.lnorm, japcenrec.norm), legendtext=plot.legend)
+cdfcomp(list(japcenrec.unif, japcenrec.lnorm, japcenrec.norm), legendtext=plot.legend)
+ppcomp(list(japcenrec.unif, japcenrec.lnorm, japcenrec.norm), legendtext=plot.legend)
+denscomp(list(japcenrec.unif, japcenrec.lnorm, japcenrec.norm), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the Japanese central bank interest rate (recession) data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("uniform")
+denscomp(japcenrec.unif, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Uniform distribution. 
+
+##Part D) Subsetting The Data Into Period's of non-Recession and Fitting Appropriate Distributions.
+
+###Subsetting S&P500 Index Data (non-recession)
+
+We again subset our S&P500 data, but this time into periods where the economy is not in a recession. Using the FRED database we were able to calculate the dates when the economy is not in a recession.The code used to subset the data as well as the dates can be seen below.   
+
+```{r message=FALSE, warning=FALSE}
+myfunc=function(x,y){sp500[sp500$Date >= x & sp500$Date <= y,]}
+rec1=myfunc("1950-10-01","1953-07-01")
+rec2=myfunc("1954-05-01","1957-08-01")
+rec3=myfunc("1958-04-01","1960-04-01")
+rec4=myfunc("1961-02-01","1969-12-01")
+rec5=myfunc("1970-11-01","1973-11-01")
+rec6=myfunc("1975-03-01","1980-01-01")
+rec7=myfunc("1980-07-01","1981-07-01") 
+rec8=myfunc("1982-11-01","1990-07-01")
+rec9=myfunc("1991-03-01","2001-03-01")
+rec10=myfunc("2001-11-01","2007-12-01")
+rec11=myfunc("2009-06-01","2018-08-01")
+```
+```{r, echo=F, message=F, warning=FALSE, results="hide"}
+rec1=rec1$Close
+rec2=rec2$Close
+rec3=rec3$Close
+rec4=rec4$Close
+rec5=rec5$Close
+rec6=rec6$Close
+rec7=rec7$Close
+rec8=rec8$Close
+rec9=rec9$Close
+rec10=rec10$Close
+rec11-rec11$Close
+sp500nrec=c(rec1, rec2 , rec3 , rec4 , rec5, rec6 , rec7, rec8, rec9, rec10)
+```
+```{r,echo=F}
+hist(sp500nrec, freq=F, col="skyblue3", main="Histogram of subset S&p500 data (non-recession)",xlab="Index value")
+lines(density(sp500nrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (non-recession) S&P500 data. This graph shows us which distributions our data closely resembles and therefore which distribution best represents our data. 
+
+```{r,echo=F}
+descdist(sp500nrec, discrete = FALSE)
+```
+
+Using the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+sp500nrec.lognorm=fitdist(as.numeric(sp500nrec),"lnorm")
+sp500nrec.lognorm
+sp500nrec.weibull=fitdist(as.numeric(sp500nrec), "weibull")
+sp500nrec.weibull
+sp500nrec.gamma=fitdist(as.numeric(sp500nrec), "gamma")
+sp500nrec.gamma
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Weibull", "gamma")
+qqcomp(list(sp500nrec.lognorm, sp500nrec.weibull,sp500nrec.gamma), legendtext=plot.legend)
+cdfcomp(list(sp500nrec.lognorm, sp500nrec.weibull,sp500nrec.gamma), legendtext=plot.legend)
+ppcomp(list(sp500nrec.lognorm, sp500nrec.weibull,sp500nrec.gamma), legendtext=plot.legend)
+denscomp(list(sp500nrec.lognorm, sp500nrec.weibull,sp500nrec.gamma), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the S&P500 data (non-recession) along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Weibull")
+denscomp(sp500nrec.weibull, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Weibull distribution. 
+
+###Subsetting Three Month Treasury Bill Data (non-recession)
+
+Using the following code I was able to subset the three month treasury bill data to include points generated only in times when a recession is NOT occurring. The code and the dates used can be seen below. 
+
+```{r}
+myfunc=function(x,y){Three_treasury[Three_treasury$DATE >= x & Three_treasury$DATE <= y,]}
+rec1=myfunc("1934-01-01","1937-05-01")
+rec2=myfunc("1938-06-01","1945-02-01")
+rec3=myfunc("1945-10-01","1948-11-01")
+rec4=myfunc("1950-10-01","1953-07-01")
+rec5=myfunc("1954-05-01","1957-08-01")
+rec6=myfunc("1958-04-01","1960-04-01")
+rec7=myfunc("1961-02-01","1969-12-01")
+rec8=myfunc("1970-11-01","1973-11-01")
+rec9=myfunc("1975-03-01","1980-01-01")
+rec10=myfunc("1980-07-01","1981-07-01") 
+rec11=myfunc("1982-11-01","1990-07-01")
+rec12=myfunc("1991-03-01","2001-03-01")
+rec13=myfunc("2001-11-01","2007-12-01")
+rec14=myfunc("2009-06-01","2018-08-01")
+```
+```{r,echo=F}
+rec1=rec1$TB3MS
+rec2=rec2$TB3MS
+rec3=rec3$TB3MS
+rec4=rec4$TB3MS
+rec5=rec5$TB3MS
+rec6=rec6$TB3MS
+rec7=rec7$TB3MS
+rec8=rec8$TB3MS
+rec9=rec9$TB3MS
+rec10=rec10$TB3MS
+rec11=rec11$TB3MS
+rec12=rec12$TB3MS
+rec13=rec13$TB3MS
+rec14=rec14$TB3MS
+Three_treasurynrec=c(rec1,rec2,rec3,rec4,rec5,rec6,rec7,rec8,rec9,rec10,rec11,rec12,rec13,rec14)
+hist(Three_treasurynrec, freq=F, col="skyblue3", main="Histogram of three month treasureybill (non-recession)", xlab="Rate")
+lines(density(Three_treasuryrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (non-recession) three month treasury bill data. This graph shows us which distributions our data closely resembles and therefore which distribution best represents our data. 
+
+```{r,echo=F}
+descdist(Three_treasurynrec, discrete = FALSE)
+```
+
+With the Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+threetrenrec.lognorm=fitdist(as.numeric(Three_treasurynrec),"lnorm")
+threetrenrec.lognorm
+threetrenrec.gamma=fitdist(as.numeric(Three_treasurynrec), "gamma")
+threetrenrec.gamma
+threetrenrec.weibull=fitdist(as.numeric(Three_treasurynrec), "weibull")
+threetrenrec.weibull
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("log Normal","Gamma","Weibull")
+qqcomp(list(threetrenrec.lognorm, threetrenrec.gamma, threetrenrec.weibull), legendtext=plot.legend)
+cdfcomp(list(threetrenrec.lognorm, threetrenrec.gamma, threetrenrec.weibull), legendtext=plot.legend)
+ppcomp(list(threetrenrec.lognorm, threetrenrec.gamma, threetrenrec.weibull), legendtext=plot.legend)
+denscomp(list(threetrenrec.lognorm, threetrenrec.gamma, threetrenrec.weibull), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the three month treasury bill data (non-recession) along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Gamma")
+denscomp(threetrenrec.gamma, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Weibull distribution. 
+
+###Subsetting Yield spread Data (non-recession)
+
+Using the following code I was able to subset (non-recession) the yield spread data to include points generated only in times when a recession is NOT occurring. The code and the dates used can be seen below. 
+
+```{r}
+myfunc=function(x,y){Yield_Spread[Yield_Spread$DATE >= x & Yield_Spread$DATE <= y,]}
+rec1=myfunc("1961-02-01","1969-12-01")
+rec2=myfunc("1970-11-01","1973-11-01")
+rec3=myfunc("1975-03-01","1980-01-01")
+rec4=myfunc("1982-11-01","1990-07-01") 
+rec5=myfunc("1991-03-01","2001-03-01")
+rec6=myfunc("2001-11-01","2007-12-01")
+rec7=myfunc("2009-06-01","2018-10-01")
+```
+```{r,echo=F}
+rec1=rec1$T10Y3M
+rec2=rec2$T10Y3M
+rec3=rec3$T10Y3M
+rec4=rec4$T10Y3M
+rec5=rec5$T10Y3M
+rec6=rec6$T10Y3M
+rec7=rec7$T10Y3M
+yield_spreadnrec=c(rec4,rec5,rec6,rec7)
+hist(yield_spreadnrec, freq=F, col="skyblue3", main="Histogram of Yield spread (non-recession)",xlab="yield spread")
+lines(density(yield_spreadnrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (non-recession) yield spread data. This graph shows us which distributions our data closely resembles and therefore which distribution best represents our data. 
+
+```{r,echo=F}
+descdist(yield_spreadnrec, discrete = FALSE)
+```
+
+Using the following Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+yieldspreadnrec.norm=fitdist(as.numeric(yield_spreadnrec),"norm")
+yieldspreadnrec.norm
+yieldspreadnrec.unif=fitdist(as.numeric(yield_spreadnrec), "unif")
+yieldspreadnrec.unif
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("Normal","Uniform")
+qqcomp(list(yieldspreadnrec.norm, yieldspreadnrec.unif), legendtext=plot.legend)
+cdfcomp(list(yieldspreadnrec.norm, yieldspreadnrec.unif), legendtext=plot.legend)
+ppcomp(list(yieldspreadnrec.norm, yieldspreadnrec.unif), legendtext=plot.legend)
+denscomp(list(yieldspreadnrec.norm, yieldspreadnrec.unif), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the yield spread data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Normal")
+denscomp(yieldspreadnrec.norm, legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Normal distribution. 
+
+###Subsetting Japanese Central Bank Interest Rate data (non-recession)(based on OECD recession indicators)
+
+Using the following code we were able to subset the Japanese Central bank interest rate data to include points generated only in times of when is NOT occurring. Using the FRED database we were also able to find the dates when when Japan did not experience a recession (according to OECD recession based indicators). We included these dates in our code, which can be seen below. 
+
+```{r}
+myfunc=function(x,y){Japanese_central_bank[Japanese_central_bank$DATE >= x & Japanese_central_bank$DATE <= y,]}
+rec1=myfunc("1953-01-01","1953-07-01")
+rec2=myfunc("1954-05-01","1957-08-01")
+rec3=myfunc("1958-04-01","1960-11-01")
+rec4=myfunc("1961-02-01","1961-12-01")
+rec5=myfunc("1963-02-01","1964-04-01")
+rec6=myfunc("1965-11-01","1970-03-01")
+rec7=myfunc("1971-10-01","1973-04-01")
+rec8=myfunc("1975-02-01","1979-06-01")
+rec9=myfunc("1980-05-01","1982-03-01")
+rec10=myfunc("1983-05-01","1985-09-01") 
+rec11=myfunc("1987-02-01","1990-08-01")
+rec12=myfunc("1994-10-01","1997-01-01")
+rec13=myfunc("1999-05-01","2001-01-01")
+rec14=myfunc("2002-01-01","2004-03-01")
+rec15=myfunc("2004-12-01","2008-02-01")
+rec16=myfunc("2009-04-01","2010-08-01")
+rec17=myfunc("2012-09-01","2013-10-01")
+```
+```{r,echo=F}
+rec1=rec1$INTDSRJPM193N
+rec2=rec2$INTDSRJPM193N
+rec3=rec3$INTDSRJPM193N
+rec4=rec4$INTDSRJPM193N
+rec5=rec5$INTDSRJPM193N
+rec6=rec6$INTDSRJPM193N
+rec7=rec7$INTDSRJPM193N
+rec8=rec8$INTDSRJPM193N
+rec9=rec9$INTDSRJPM193N
+rec10=rec10$INTDSRJPM193N
+rec11=rec11$INTDSRJPM193N
+rec12=rec12$INTDSRJPM193N
+rec13=rec13$INTDSRJPM193N
+rec14=rec14$INTDSRJPM193N
+rec15=rec15$INTDSRJPM193N
+rec16=rec16$INTDSRJPM193N
+rec17=rec17$INTDSRJPM193N
+japcennrec=c(rec1,rec2,rec3,rec4,rec5,rec6,rec7,rec8,rec9,rec10,rec11,rec12,rec13,rec14,rec15,rec16,rec17)
+hist(japcennrec, freq=F, col="skyblue3", main="Japanese central bank interest rate (non-recession)", xlab="Interest rate")
+lines(density(japcennrec), col="red")
+```
+
+Below is the Cullen-Frey graph we created using the subset (non-recession) Japanese central bank interest rate data. This graph shows us which distributions our data closely resembles and therefore which distribution best represents our data. 
+
+```{r,echo=F}
+descdist(japcennrec, discrete = FALSE)
+```
+
+Again, Using the same Fitdist command we are able to find the parameters that best fit each suggested distribution to the data. The Fitdist command uses MLE in order to find the best parameters to fit the data set. The output below states the parameters that would best fit the data for each distribution.
+
+```{r,echo=F}
+japcennrec.unif=fitdist(as.numeric(japcennrec),"unif")
+japcennrec.unif
+japcennrec.lnorm=fitdist(as.numeric(japcennrec), "lnorm")
+japcennrec.lnorm
+japcennrec.norm=fitdist(as.numeric(japcennrec), "norm")
+japcennrec.norm
+japcennrec.gamma=fitdist(as.numeric(japcennrec), "gamma")
+japcennrec.gamma
+```
+
+Below we can see the cdf graph which provides a plot of the empirical distribution and each fitted distribution in cdf. The theoretical distribution graph provides a density plot of each fitted distribution with the histogram of the data. the pp plot graph provides a plot of the probabilities of each fitted distribution (x-axis) against the empirical probabilities. The qq plot graph provides a plot of the quantiles of each theoretical distribution (x-axis) against the empirical quantiles of the data. Lastly the denscomp plot provides a  density plot of each fitted distribution with the histogram of the data.
+
+```{r,echo=F}
+par(mfrow=c(2,2))
+plot.legend=c("Uniform","log normal","Normal", "Gamma")
+qqcomp(list(japcennrec.unif, japcennrec.lnorm, japcennrec.norm,japcennrec.gamma), legendtext=plot.legend)
+cdfcomp(list(japcennrec.unif, japcennrec.lnorm, japcennrec.norm,japcennrec.gamma), legendtext=plot.legend)
+ppcomp(list(japcennrec.unif, japcennrec.lnorm, japcennrec.norm,japcennrec.gamma), legendtext=plot.legend)
+denscomp(list(japcennrec.unif, japcennrec.lnorm, japcennrec.norm,japcennrec.gamma), legendtext=plot.legend)
+```
+
+The graph below shows the histogram of the Japanese central bank interest rate data along with the distributions we fitted from the Cullen-Frey graph. We can use this histogram along with the Cullen-Frey graph, and the other plots we created to determine which distribution best fits the data.
+
+```{r,echo=F}
+par(mfrow=c(1,1))
+plot.legend=c("Uniform")
+denscomp(list(japcennrec.unif), legendtext=plot.legend)
+```
+
+Based on the Cullen-Frey graph, the qq plot, the cdf plot, and the pp plot we determined that the best distribution to fit the data would be the Uniform distribution. 
+
+##Part E) Comparing Subset data
+
+Based on the data that was subset we can conclude that there is some significant differences between their distributions. Based on the Cullen-Frey graphs and other plots we can conclude that some of the recession and non-recession data sets are significantly different in terms of their distributions. For example the S&P500 data and the Three month treasury bill data differed in their distribution when subset.  We can also assume that the recession and non-recession data will have different distributions based on the fact that they come from different periods with differing economic conditions. When it comes to the difference between the total data and the subset data we believe that the data is very closely distributed. This assumption is based on the fact that some of the subset data sets share similar distributions to the total data. 
+
+##Part F) Kolmogorov-Smirnov Tests
+
+###Recession vs non-recession
+
+When comparing the recession subset data vs the non-recession subset data we get very small p-values from our Kolmogorov-Smirnov Test. This suggests that our data comes from different different distributions. 
+
+```{r, warning=F}
+
+ks.test(sp500rec, sp500nrec)
+```
+
+The very small p-value above suggests that the S&P500 recession data and the S&P500 non-recession data come from different distributions. This confirms the assumption we made base on the data in part E. 
+
+```{r, warning=F}
+#(total three month treasury data vs non-recession three month treasury)
+ks.test(Three_treasuryrec, Three_treasurynrec)
+```
+
+The very small p-value above suggests that the three month treasury bill recession data and the three month treasury bill non-recession data come from different distributions. This confirms our assumption in part E. 
+
+```{r, warning=F}
+#(total yield spread data vs non-recession yield spread)
+ks.test(yield_spreadrec, yield_spreadnrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test suggests that the two data sets come from the same distribution. This goes against the assumption we made in Part E. This suggests that recession yield spread data and non-recession yield spread data is significantly different.
+
+```{r, warning=F}
+#(total japanese central bank data vs non-recession japanese central bank)
+ks.test(japcenrec, japcennrec)
+```
+
+The very small p-value above suggests that the Japanese central bank interest rate recession data and the Japanese central bank interest non-recession data come from different distributions. This confirms our assumption in part E.
+
+###Total vs Recession
+```{r, warning=F}
+#(total S&p500 data vs recession S&P500)
+ks.test(sp500_close, sp500rec) 
+```
+
+The very small p-value above suggests that the S&P500 recession data and the S&P500 total data come from different distributions. This actually goes against the assumption we made in part E. three month treasury bill 
+
+```{r, warning=F}
+#(total three month treasury data vs recession three month treasury)
+ks.test(Three_treasury$TB3MS, Three_treasuryrec) 
+```
+
+The very small p-value above suggests that the total three month treasury bill data and the three month treasury bill recession data come from different distributions. This actually goes against the assumption we made in part E.This suggests that recession three month treasury bill data is significantly different than the total. 
+
+
+```{r, warning=F}
+#(total three month treasury data vs recession three month treasury)
+ks.test(Yield_Spread$T10Y3M, yield_spreadrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test suggests that the two data sets come from the same distribution. This confirms the assumption we made based on the data in part E. The assumption being that the total data and the subset data will have similar distributions since the subset data is included in the total data. 
+
+```{r, warning=F}
+#(total japanese central bank data vs recession japanese central bank)
+ks.test(Japanese_central_bank$INTDSRJPM193N, japcenrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test suggests that the two data sets (total Japanese interest data vs subset (recession) Japanese interest data) come from the same distribution. This confirms the assumption we made based on the data in part E. The assumption being that the total data and the subset data will have similar distributions since the subset data is included in the total data. 
+
+###Total vs non-recession
+
+```{r, warning=F}
+#(total S&P500 data vs non-recession S&P500)
+ks.test(sp500_close, sp500nrec) 
+```
+
+The very small p-value above suggests that the S&P500 non-recession data and the total S&P500 data come from different distributions. This actually goes against the assumption we made in part E. This suggests that non-recession s&P500 data is significantly different than the total. 
+
+```{r, warning=F}
+#(total three month treasury data vs non-recession three month treasury)
+ks.test(Three_treasury$TB3MS, Three_treasurynrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test above suggests that the two data sets come from the same distribution. This confirms the assumption we made based on the data in part E. The assumption being that the total data and the subset data will have similar distributions since the subset data is included in the total data. 
+
+```{r, warning=F}
+#(total yield spread data vs non-recession yield spread)
+ks.test(Yield_Spread$T10Y3M, yield_spreadnrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test above suggests that the two data sets (total yield spread data vs subset (non-recession) yield spread data) come from the same distribution. This confirms the assumption we made based on the data in part E. The assumption being that the total data and the subset data will have similar distributions since the subset data is included in the total data. 
+
+```{r, warning=F}
+#(total japanese central bank data vs non-recession japanese central bank)
+ks.test(Japanese_central_bank$INTDSRJPM193N, japcennrec)
+```
+
+The large p-value from this Kolmogorov-Smirnov test suggests that the two data sets (total Japanese interest data vs subset (non-recession) Japanese interest data) come from the same distribution. This confirms the assumption we made based on the data in part E. The assumption being that the total data and the subset data will have similar distributions since the subset data is included in the total data. 
+
+Even though some of the Kolmogorov-Smirnov tests went against the assumptions we made in part E. The majority of them confirmed the assumption we made based on the data. Those assumptions were that the recession and non-recession data had different distributions since they came from different period's that had different economic conditions. The other assumption was that the total data and the subset data would be similar since the subset data comes from and is included in the total data. These assumptions were also made using the data we received from the Cullen-Frey graphs. 
+
+#Question 3
+
+##Part A) Estimating CAPM model
+
+```{r}
+library("readxl")
+data=read_excel("capm4.xlsx")
+markport=data$mkt-data$riskfree #calculating market premium
+riskprem=data-data$riskfree #calculating risk premium on each stock
+
+regmobile=lm(riskprem$xom~markport)
+regmicro=lm(riskprem$msft~markport)
+regge=lm(riskprem$ge~markport)
+reggm=lm(riskprem$gm~markport)
+regibm=lm(riskprem$ibm~markport)
+regdis=lm(riskprem$dis~markport)
+```
+
+First we calculated the risk premium on the market portfolio and the risk premium for each stock. Then we ran a regression with these values in order to calculate each stocks CAPM model. The output below shows the intercept and $\beta_1$ values of our regression with each stock. Using the given $\beta$ values for each regression we can determine which stocks are defensive and which are aggressive.
+
+```{r}
+summary(regmobile) #Exxon-Mobile
+```
+
+Exxon-Mobiles $\beta$ value is the smallest value generated from all the regressions. This means that this stock is the most defensive stock in our portfolio. This means that the Exxon-Mobile stock is not sensitive to variation in the entire stock market.
+
+```{r}
+summary(regmicro) #Microsoft
+```
+
+Microsofts $\beta$ value is 1.26 which is the highest beta value we have. This means that the Microsoft stock is the most aggressive stock in our portfolio. This indicates that Microsoft stock in very sensitive to variation in the stock market. 
+
+```{r}
+summary(regge) #GE
+```
+
+GE's $\beta$ value is .859 which indicates that the stock is relatively defensive since the value is less than 1. This means that GE's stock is the second most defensive stock in our portfolio. Therefore the stock does not fluctuate very much with variation in the market. 
+
+```{r}
+summary(reggm) #GM
+```
+
+GM's $\beta$ value is 1.14 which indicates that the stock is relatively aggressive since its value is greater than 1. As a result GM's stock is relatively sensitive to variation in the overall stock market.  
+
+```{r}
+summary(regibm) #IBM
+```
+
+IBM's $\beta$ value from our regression comes out to be 1.14 which suggests that the stock is aggressive. This also means that the stock is sensitive to fluctuations in the variance of the overall market. This makes IBM the second most aggressive stock in our portfolio
+
+```{r}
+summary(regdis) #Disney
+```
+
+Lastly, Disneys $\beta$ value comes out to .914. This indicates that Disney is a defensive stock and so therefore is not relatively sensitive to variation in the overall stock market. 
+
+According to our regression results Microsoft is the most aggressive and Exxon-Mobile is the most defensive. 
+
+##Part B) Plotting Microsoft stock regression line with scatter data
+
+All of our estimated $\alpha$ values are very small and clustered around zero. The $\alpha$ value farthest from zero comes out to be .013, which is still relatively close to zero. This would seem to affirm the finance theory assumption that the alpha values should be zero given our estimates. Below you will find the code used to generate the scatter plot of the Microsoft stock along with its fitted regression line. 
+
+```{r}
+#plot of Mircosoft stock and fitted line
+plot(markport,riskprem$msft, ylim=c(-.3,.3), ylab="Microsoft returns minus riskfree")
+par(new=T)
+plot(markport, regmicro$fitted.values, type="l", ylim=c(-.3,.3), ylab="")
+```
+
+##Part C) Estimating $\beta_1$ given that $\alpha$=0
+
+Below you will find the code used to run a regression with the assumption that $\alpha$ is zero. The beta estimates and confidence intervals for each stock can been in the summary of each regression. 
+
+```{r}
+#regression with the assumption alpha is zero 
+regmobilezero=lm(riskprem$xom~markport-1)
+regmicrozero=lm(riskprem$msft~markport-1)
+reggezero=lm(riskprem$ge~markport-1)
+reggmzero=lm(riskprem$gm~markport-1)
+regibmzero=lm(riskprem$ibm~markport-1)
+regdiszero=lm(riskprem$dis~markport-1)
+
+#Beta estimates
+summary(regmobilezero) #Exxon-Mobile
+summary(regmicrozero) #Microsoft
+summary(reggezero) #GE
+summary(reggmzero) #GM
+summary(regibmzero) #IBM
+summary(regdiszero) #Disney
+```
+```{r}
+#Constructing confidence intervals
+CIregmobilezero=confint(regmobilezero, level=.95) #Exxon-Mobile
+CIregmicrozero=confint(regmicrozero, leve=.95) #Microsoft
+CIreggezero=confint(reggezero, level=.95) #GE
+CIreggmzero=confint(reggmzero, level=.95) #GM
+CIregibmzero=confint(regibmzero, level=.95) #IBM
+CIregdiszero=confint(regdiszero, level=.95) #Disney
+```
+```{r} 
+#Confidence intervals
+CIregmobilezero #Exxon-Mobile
+CIregmicrozero #Microsoft
+CIreggezero #GE
+CIreggmzero  #GM
+CIregibmzero #IBM
+CIregdiszero #Disney
+```
+
+After running the regressions with the assumption that $\alpha$ is zero we found that $\beta$ values of each regression did not change very much. At most the $\beta$ values differs by .13 between the two regressions. This would suggest that the econometric model and the financial model do not differ by much in terms of the beta value given. 
+
+##Part D) Bootstrapping Microsoft
+
+Below you will find the code used to generate the boot strap samples from the Microsoft stock. As well as the code used to create a plot of the estimated model parameters across each realization. 
+
+```{r, message=F}
+alpha=NULL
+beta=NULL
+dalpha=NULL
+dbeta=NULL
+x=length(data$msft)
+#bootstrap process
+for(i in 1:1000){bootstrap=riskprem[c(sample(c(1:length(data$date)), size=length(data$date),replace=T)),];
+regfinal=lm(bootstrap$msft~bootstrap$mkt);
+#getting our alpha and beta estimates
+alpha[i]=regfinal$coefficients[1];
+beta[i]=regfinal$coefficients[2];
+#constructing interval lengths
+confidint=confint(regfinal, level=.95);
+dalpha[i]=confidint[1,2]-confidint[1,1];
+dbeta[i]=confidint[2,2]-confidint[2,1]
+}
+```
+
+Below you will find the plots of the alpha values and beta values generated from each realization of the bootstrap process. The red line represents the overall mean for the bootstrap process. when it came to calculating the confidence interval length for each trial we simply took the upper bound of each realization and subtracted the lower bound. We then plotted these length values. 
+
+```{r}
+plot(alpha, main="plot of bootstrap Alpha estimates", ylab="value of Alpha", xlab="trial number")
+abline(h=mean(alpha), col="red")
+plot(beta, main="plot of bootstrap Beta estimates", ylab="value of Beta", xlab="trial number")
+abline(h=mean(beta), col="red")
+```
+
+
+```{r}
+plot(dalpha, main="plot of bootstrap Alpha confidence interval estimates", ylab="Confidence interval length", xlab="trial number")
+abline(h=mean(dalpha), col="red")
+plot(dbeta, main="plot of bootstrap Beta confidence interval estimates", ylab="Confidence interval length", xlab="trial number")
+abline(h=mean(dbeta), col="red")
+```
+
+
+##Part E) Mean and volatility of estimates and their respective histograms
+
+Below you'll find the mean and the volatility (standard deviation) of the $\hat\alpha$ estimates respectively. you will also find the the histogram of the estimate along with its respective density curve. 
+
+
+```{r}
+mean(alpha)
+sd(alpha)
+```
+```{r,echo=F}
+hist(alpha, freq=FALSE, main="Histogram of Alphahat", xlab="Alphahat values")
+lines(density(alpha, adjust=2), col="red")
+```
+
+Below you'll find the mean and the volatility (standard deviation) of the $\hat\beta$ estimates respectively. you will also find the the histogram of the estimate along with its respective density curve. 
+.22348
+
+```{r}
+mean(beta)
+sd(beta)
+```
+```{r,echo=F}
+hist(beta, freq=FALSE, main="Histogram of Betahat", xlab="Betahat values")
+lines(density(beta, adjust=2), col="red")
+```
+
+Below you'll find the mean and the volatility (standard deviation) of the $d\hat\alpha$ estimates respectively. you will also find the the histogram of the estimate along with its respective density curve. 
+
+```{r}
+mean(dalpha)
+sd(dalpha)
+```
+```{r,echo=F}
+hist(dalpha, freq=FALSE, main="Histogram of Alphahat confidence intervals", xlab="Confidence interval length")
+lines(density(dalpha, adjust=2), col="red")
+```
+
+Below you'll find the mean and the volatility (standard deviation) of the $d\hat\beta$ estimates respectively. you will also find the the histogram of the estimate along with its respective density curve. 
+
+```{r}
+mean(dbeta)
+sd(dbeta)
+```
+```{r,echo=F}
+hist(dbeta, freq=FALSE,main="Histogram of betahat confidence intervals", xlab="Confidence interval length")
+lines(density(dbeta, adjust=2), col="red")
+```
+
+
+##Part F) Comparing Bootstrap and linear regression
+
+our results from part E and Part A are very similar. The estimated Alpha and Beta values from both the linear regression and the bootstrap regression do not differ by much. At MOST the beta and alpha estimates differ by .02. Although they are very similar we can confidently choose the bootstrap estimates to be the more reliable and trustworthy results. This is because bootstrap is much more thorough and provides more realizations through multiple scenarios where as linear regression simply goes through one realization (the data we provide). Bootstrapping provides multiple realization by sampling with replacement from the data provided. As a result we prefer the bootstrap estimates.
+
+#Question 4 
+
+##Part A) Probability of cancer after one positive test
+
+The code used to determine the probability of having cancer after one positive test is shown below. We used the equation for Bayesian theorem for sequential learning when constructing our code (shown below). 
+
+$P(A|X)=\frac{P(X|A)P(A)}{P(X|A)P(A)+P(X|~A)P(~A)}$
+
+```{r}
+#ct=probability of having cancer
+#cf=probability of not having cancer
+#ptct=probability of having cancer given a postive test
+#ptcf=probability of not having cancer given a positive test
+#ctn=new probability of having cancer
+ct=1
+cf=99
+ptct=99
+ptcf=10
+ctn=0
+ctn=((ptct*ct)/((ptct*ct)+(ptcf*cf)))
+ct=ctn
+cf=(1-ctn)
+probabilityofcancer=(ctn*100)
+print(probabilityofcancer)
+```
+
+After one positive test the probability of having cancer is 9.09% as shown above.
+
+##Part B) How many positive test does it take to have a probabiltiy of cancer over 95%?
+
+The code used in order to determine the probability of having cancer given a positive test is shown below.The code is designed to loop until the chance of having cancer is less than 95%. 
+
+```{r}
+#ct=proability of having cancer
+#cf=probability of not having cancer
+#ptct=probability of having cancer given a postive test
+#ptcf=probability of not having cancer given a positive test
+#ctn=new probability of having cancer
+ct=1
+cf=99
+ptct=99
+ptcf=10
+ctn=0
+while(ctn < .95){if(ctn < .95){ctn=((ptct*ct)/((ptct*ct)+(ptcf*cf))); 
+ct=ctn; cf=(1-ctn);
+probabilityofcancer=(ctn*100); 
+print(probabilityofcancer)}else{print(probabilityofcancer)}}
+```
+
+The outputs above show the probability of having cancer after 1st, 2nd, 3rd,& 4th positive tests respectively.A plot showing the probability of having cancer after a certain number of positive tests is shown below. As we can see from the graph is takes 4 positive tests in a row to reach a probability of cancer greater than 95%. 
+
+```{r, echo=F}
+probofcancer=c(9.090909, 49.74874, 90.7416, 98.9799, 100)
+plot(probofcancer, type="l", xlab="Number of trials", ylab="Probability of Cancer",
+     main="Number of Trials vs Probability of cancer", xaxt="n")
+axis(1, at=seq(1,5,1))
+abline(h=95,type=2,col="red")
+```
+
+##Part C) What is the probability of having cancer after a negative test on the third trial. 
+
+```{r}
+#ct=proability of having cancer
+#cf=probability of not having cancer
+#ptct=probability of having cancer given a postive test
+#ptcf=probaiblity of not having cancer given a positive test
+#ctn=new probability of having cancer
+#pfct=probability of having a false test given cancer
+#pfcf=probability of having a false test given not having cancer
+ct=49.78
+cf=50.22
+ptct=99
+ptcf=10
+ctn=.4978
+pfct=1
+pfcf=90
+
+#The third test being negative drops to the proability of having cancer to 1.08%
+ctn=((pfct*ct)/((pfct*ct)+(pfcf*cf)))
+ct=ctn
+cf=(1-ctn)
+probabilityofcancer=(ctn*100)
+print(probabilityofcancer)
+```
+
+After 2 positive tests and a third negative test the probability of having cancer drops from 49.78% to 1.08%.
+
+```{r}
+#It takes another 4 positive tests (7 tests in total) for the probability of having cancer to reach > 95%
+while(ctn < .95){ctn=((ptct*ct)/((ptct*ct)+(ptcf*cf))); 
+ct=ctn;
+cf=(1-ctn);
+probabilityofcancer=(ctn*100); print(probabilityofcancer)}
+```
+
+The output above shows the probability of having cancer after the 3rd, 4th, 5th, 6th, and 7th positive test respectively. A plot showing the probability of having cancer after a certain number of positive tests is shown below. As we can see from the graph, the probability of having cancer drops significantly when we get a third negative test. It takes another 4 positive tests afterwords to reach a probability of having cancer to be greater than 95%.  
+
+```{r,echo=F}
+probofcancer=c(9.09, 49.78, 1.09, 9.92, 52.16, 91.52, 99.07)
+plot(probofcancer, type="l", xlab="Number of trials", ylab="Probability of Cancer",
+     main="Number of Trials vs Probability of cancer", xaxt="n")
+axis(1, at=seq(1,7,1))
+abline(h=95,type=2,col="red")
+```
