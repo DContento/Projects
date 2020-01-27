@@ -1,0 +1,273 @@
+---
+title: "Project 6"
+author: "David Contento"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r,message=F,echo=F}
+library(plm)
+library(AER)
+library(plyr)
+data("USAirlines")
+```
+
+#Problem 1
+
+##1a
+
+Do not need to remove firms since no NA's are contained in the data.
+```{r}
+count(USAirlines,'firm')
+```
+
+##1b
+
+```{r}
+summary(USAirlines)
+```
+
+the outpuit variable ranges from zero to 2 with a median out of .031 . Cost for the firms range from approximately 70,000 to a little less than 5,000,000. Price is variosu greatly similar to cost. The minimum price of a firm is around 100,000 with a max of 1,000,000 . Lastly load ranges from .4 to a little less than .7 with a median value of .56 .
+
+##1c
+
+The betas suggest output and price have a positive influence on cost. Load has a negative effect on cost.
+```{r}
+#estimating equation 
+logout2 <- (log(USAirlines$output))^2
+mod = lm(log(cost) ~ log(output) + logout2 + log(price) + load, data = USAirlines)
+summary(mod)
+```
+
+##1d
+
+Fewer statistically significant columns when more are added, but better R-squared. The betas suggest that
+output a a postivie effect on cost, some years have a positive effect on cost, and some firms have a negative
+influence on cost.
+```{r}
+library(fastDummies)
+full = dummy_cols(USAirlines,select_columns = c('year','firm'))
+head(full)
+
+#estimating with time effects only 
+year = dummy_cols(USAirlines,select_columns = c('year'))
+mod1 = lm(log(cost) ~ . + 
+           log(output) + logout2 + log(price) + load - 
+           firm - year - output - cost - price - load - year_1970, data = year)
+summary(mod1)
+
+#estimating with firm effects only 
+firm = dummy_cols(USAirlines,select_columns = c('firm'))
+mod2 = lm(log(cost) ~ . + 
+           log(output) + logout2 + log(price) + load - 
+           firm - year - output - cost - price - load - firm_1, data = firm)
+summary(mod2)
+
+#estimating with both firm and time effects
+mod3 = lm(log(cost) ~ . + 
+           log(output) + logout2 + log(price) + load - 
+           firm - year - output - cost - price - load - year_1970 - firm_1, data = full)
+summary(mod3)
+```
+
+##1e
+
+With both time and firm effects, the time effect coefficients are less significant and have a smaller absolute value
+```{r}
+#comparing model with plots 
+plot(mod1$coefficients[grepl('year',names(mod1$coefficients))],xlab='predictor', ylab='coefficient', main="Time effects only")
+plot(mod3$coefficients[grepl('year',names(mod3$coefficients))],xlab='predictor', ylab='coefficient', main="Both time and Firm effects")
+```
+
+##1f
+
+According to the betas output and price positively impact cost while load negatively impacts cost.
+```{r}
+#random effects model 
+with <- plm(data = full,log(cost) ~ log(output) + logout2 + log(price) + load)
+rand <- plm(data = full,log(cost) ~ log(output) + logout2 + log(price) + load,model='random')
+summary(rand)
+phtest(with, rand)
+```
+##1g
+We fail to reject the null hypothesis so the random effects model is appropriate.
+
+```{r,hide=t,warning=F,message=F,echo=F}
+library(plm)
+library(lmtest)
+library(sandwich)
+library(ivpack)
+wages=read.csv("wage.csv")
+wages<-plm.data(wages, 595)
+```
+#Problem 2
+
+##2a
+The Breusch-Pagan test indicates there is heteroskedasticity.
+```{r}
+#creating model and running Breusch-Pagan test
+olsmodel=lm(wages$LWAGE~wages$EXPER+wages$WKS+wages$OCC+wages$IND+wages$SOUTH+wages$SMSA+wages$MS+wages$FEM+wages$UNION+wages$ED+wages$BLK)
+bptest(olsmodel)
+```
+
+##2b
+
+The estimates are identical suggesting white standard errors can work with panel data in this particular instance.
+```{r}
+#computing robust and white errors
+library(sandwich)
+library(ivpack)
+library(plm)
+robust.se(olsmodel)
+coeftest(olsmodel, vcov=vcovHC(olsmodel, cluster="individual"))
+```
+
+##2c
+
+The individual effects do not change dramatically. The beta on experience suggests it has a positive impact on 
+wages.
+```{r}
+#fixed effects without time 
+plmfe=plm(wages$LWAGE~wages$EXPER+wages$WKS+wages$OCC+wages$IND+wages$SOUTH+wages$SMSA+wages$MS+wages$FEM+wages$UNION+wages$ED+wages$BLK,data=wages,model="within")
+summary(plmfe)
+```
+
+```{r}
+#fixed effects with time
+plmfet=plm(wages$LWAGE~wages$EXPER+wages$WKS+wages$OCC+wages$IND+wages$SOUTH+wages$SMSA+wages$MS+wages$FEM+wages$UNION+wages$ED+wages$BLK+wages$time,data=wages,model="within")
+summary(plmfet)
+```
+
+##2d
+
+Random effects model is more appropriate according to the Hausman Test. Experience continues to have an effect on wages although
+the beta is smaller compated to previous models.
+```{r}
+#random effects model
+rem=plm(wages$LWAGE~wages$EXPER+wages$WKS+wages$OCC+wages$IND+wages$SOUTH+wages$SMSA+wages$MS+wages$FEM+wages$UNION+wages$ED+wages$BLK+wages$time, data=wages,model = "random")
+summary(rem)
+phtest(rem, plmfet)
+```
+
+```{r, hide=T, warning=F,echo=F}
+setwd("C:/Users/David/Desktop/Grad school work/403B/project 3")
+library(AER)
+data("USConsump1979")
+data3=USConsump1979
+datadf=data.frame(data3)
+attach(datadf)
+```
+#Problem 3
+
+##3a
+
+Below we calculated investment (invest) as the difference between income and expenditure.
+```{r}
+#calculating investment
+investment=datadf$income-datadf$expenditure
+datadf[,3]=investment
+colnames(datadf)[3]<-"invest"
+datadf
+```
+
+##3b
+
+Below we calculated the summary statistics and calculated the summary statistics fo each variable. 
+```{r,warning=F,message=F,echo=F}
+library(psych)
+attach(datadf)
+describe(datadf)
+summary(datadf)
+```
+
+```{r}
+library(fitdistrplus)
+#distribution for income 
+descdist(datadf$income)
+```
+
+```{r}
+#distribution for expenditure
+descdist(datadf$expenditure)
+```
+
+```{r}
+#distribution for investment
+descdist(datadf$invest)
+```
+
+From the graph above we can see that a uniform distribution fits all the variables in the data extremely close.
+
+##3c
+
+```{r}
+#regressing income on expenditure
+reg=lm(datadf$income~datadf$expenditure)
+summary(reg)
+```
+##3d
+
+```{r}
+#stage 1 (creating instrument)
+reg1=lm(expenditure~investment)
+
+#stage 2 (using instrument)
+reghat=fitted.values(reg1)
+reg2=lm(income~reghat)
+
+cor(datadf$expenditure,datadf$invest)
+cor(reg1$residuals,datadf$invest)
+summary(reg2)
+```
+
+From the summary and correlations above we can see that the instrument (invest) is correlated with expenditure, but not correlated with the errors of the orginial regression. This suggests that the instrument is good and would help us understand the effect of expenditure on income. However, using the instrument takes away any statistical significance we had in the regression so perhaps we have a bad instrument. 
+
+#Problem 4
+
+##4a
+
+there is a negative relationship between fertility and education holding all other factors constant/fixed
+
+```{r,hide=T,echo=F}
+setwd("C:/Users/David/Desktop/Grad school work/403B/project 3")
+library(iotools)
+library(foreign)
+data4=read.dta("fertil1.dta")
+attach(data4)
+```
+```{r}
+#Original OLS model 
+reg=lm(kids~age+agesq+educ+black+east+west+northcen+farm+othrural+town+smcity+y74+y76+y78+y80+y82+y84)
+summary(reg)
+```
+
+##4b
+
+```{r}
+#stage 1 (creating instrument)
+iveduc=lm(educ~meduc+feduc+age+agesq+black+east+west+northcen+farm+othrural+town+smcity+y74+y76+y78+y80+y82+y84)
+educfitted=iveduc$fitted.values
+
+#stage 2 (Implementing Instrument )
+ivreg1=lm(kids~educfitted+age+agesq+black+east+west+northcen+farm+othrural+town+smcity+y74+y76+y78+y80+y82+y84)
+summary(ivreg1)
+```
+
+```{r}
+#Checking for correlation 
+cor(educ,meduc+feduc)
+cor(reg$residuals,meduc+feduc)
+```
+
+From the output above we can see that the instruments (meduc and feduc) are correlated with education while remaining uncorrelated with the errors of the first regression. This suggests that the instruments works and is good for the purpose of understanding the effects our endogenous variables have on number of kids. 
+
+##4c
+
+Below we added interaction terms for education over time. From the summary we can see that over time education has increasingly negative effect on the number of kids a woman has. 
+```{r}
+#including interaction term for education overtime 
+ivreg1=lm(kids~educfitted+age+agesq+black+east+west+northcen+farm+othrural+town+smcity+y74+y76+y78+y80+y82+y84+
+y74educ+y76educ+y78educ+y80educ+y82educ+y84educ)
+summary(ivreg1)
+```
+
