@@ -1,0 +1,317 @@
+---
+title: 'Project 5'
+author: "David Contento"
+date: "January 16, 2019"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+# I) Introduction
+
+The data used in the following analysis is time series data which tracks monthly milk production as measured by pounds per cow. The data was gathered online from a website called the datamarket. The data was originally published in a book for about time series analysis by Jonathan Cryer (1986). The data shows some upward trend with very strong and consistent seasonal components and starts in January 1962, and ends in December 1975.
+
+# II) Results
+
+##Modeling and Forecasting Trend 
+
+### 1A) Plot of times series data
+
+```{r}
+#setting up data and converting to timeseries
+setwd("C:/Users/David/Desktop")
+data = read.csv("milk.csv",header = F)
+names(data) = c('date','milkproduction')
+data = na.exclude(data)
+attach(data)
+datats = ts(milkproduction,start=1962,freq=12)
+
+#Creating time variable 
+time = seq(1962,1976,length=length(datats))
+
+#Times series plot of data
+plot.ts(datats,main='Monthly Milk Production From 1962 to 1975',ylab='Pounds Per Cow')
+```
+
+### 1B) Does the plot suggest covariance stationary 
+
+The data does not seem to be covariant stationary. This is evident by the fact that we clearly observe an upward trend.
+
+### 1C) ACF and PACF plots
+
+From the ACF and PACF plots We observe large amounts of auto correlation, which is evident by the large significant spikes in each lag.  This suggests that the data is nonstationary.
+
+```{r}
+#acf and pcf plots
+acf(datats,main='ACF of Residuals')
+pacf(datats,main='PACF of Residuals')
+```
+
+### 1D) Fitting linear and non-linear model
+
+The code below fits a linear, quadratic, and quadratic+periodic trend to the data.
+
+```{r}
+#, fig.width=6, fig.height=6
+#Linear Fit
+mod1=lm(datats~time)
+#par(mfrow=c(2,1))
+plot(datats, ylab="Monthly milk production",main='Monthly Milk Production Linear Fit', xlab="Time", lwd=2, col='skyblue3', xlim=c(1962,1975))
+#plot(datats)
+lines(time,mod1$fitted.values,col="red3",lwd=2)
+
+#quadratic fit
+mod2=lm(datats~time+I(time^2))
+#par(mfrow=c(2,1))
+plot(datats,ylab="Monthly milk production",main='Monthly Milk Production Quadratic Fit', xlab="Time", lwd=2, col='skyblue3', xlim=c(1962,1975))
+lines(time,mod2$fitted.values,col="red3",lwd=2)
+
+#periodic + quadratic fit
+sin.t<-sin(2*pi*time)
+cos.t<-cos(2*pi*time)
+mod3=lm(datats~time+I(time^2) + sin.t + cos.t)
+#par(mfrow=c(2,1))
+plot(datats,ylab="Monthly milk production",main='Monthly Milk Production Periodic Plus Quadratic Fit', xlab="Time", lwd=2, col='skyblue3', xlim=c(1962,1975))
+lines(time,mod3$fitted.values,col="red3",lwd=2)
+```
+
+
+### 1E) Residuals vs fitted values plot
+
+The residuals for the linear and quadratic+periodic model have a mean of zero (mean of residuals indicated by red line), which shows us that the forecasts will be unbiased. The residuals also have constant variance, which makes the calculation of prediction intervals easier. 
+
+```{r}
+#plot of residuals for linear trend model 
+plot(mod1$fitted.values,mod1$residuals, main='Residuals by Fitted Values', ylab="Residuals",type='l',xlab="Fitted Value",col='blue')
+abline(h=mean(mod1$residuals), col="red")
+
+#plot of residuals for quadratic trend model 
+plot(mod2$fitted.values,mod2$residuals, main='Residuals by Fitted Values', ylab="Residuals",type='l',xlab="Fitted Value",col='blue')
+abline(h=mean(mod2$residuals), col="red")
+
+#plot of residuals for quadratic+periodic linear trend model 
+plot(mod3$fitted.values,mod3$residuals, main='Residuals by Fitted Values', ylab="Residuals",xlab="Fitted Value",col='blue')
+abline(h=mean(mod3$residuals), col="red")
+```
+
+
+### 1F) Histogram of residuals
+
+The histograms of the residuals for the linear and quadratic fit do not appear to be normally distributed. The residuals for the quadratic fit on the other hand do appear to be normally distributed, with perhaps a slight left skew. 
+
+```{r}
+#Histogram of Linear model residuals
+hist(mod1$residuals,col='skyblue',xlab='Residuals',main='Residuals of Linear Fit')
+
+#Histogram of Quadratic model residuals
+hist(mod2$residuals,col='skyblue',xlab='Residuals',main='Residuals of Quadratic Fit')
+
+#Histogram of Quadratic+periodic model residuals
+hist(mod3$residuals,col='skyblue',xlab='Residuals',main='Residuals of Periodic + Quadratic Fit')
+```
+
+### 1G) Jarque Bera test
+
+Using the code below we ran a Jaque Bera test for normality on the residuals of each model. 
+
+```{r}
+library(tsoutliers)
+#test for normality for linear model
+JarqueBera.test(mod1$residuals)
+```
+
+The low p-value above means that we reject the null hypothesis that the residuals are normally distributed.
+
+```{r}
+#test for normality for quadratic model
+JarqueBera.test(mod2$residuals)
+```
+
+Again, the low p-value above means that we reject the null hypothesis that the residuals are normally distributed for model 2.
+
+```{r}
+#test for normality for quadratic+periodic model
+JarqueBera.test(mod3$residuals)
+```
+
+we reject the null hypothesis that the residuals for model 3 are normally distributed due to the low p-value of the Jarque Bera test. For all the models we were unable to confirm  that the residuals were normally distributed. 
+
+### 1H)ACF and PACF plots 
+
+From the plots below we can see that the Linear model still has large significant spikes in both its ACF and PACF plot. This suggests that the data still has large amounts of autocorrelation and that there is still information left in the residuals which should be used in computing forecasts. The ACF and PACF plots for the quadratic+periodic model are much better, with less significant spikes for each lag. This suggests that quadratic+periodic model has less autocorrelation than the linear model and leaves less information in the residuals that can be used for forecasting. 
+
+```{r}
+#ACF and PACF plots for linear model 
+acf(mod1$residuals, main="ACF of Linear model Residuals") 
+pacf(mod1$residuals, main="PACF of Linear model Residuals")
+
+#ACF and PACF plots for quadratic model 
+acf(mod2$residuals, main="ACF of Quadratic model Residuals") 
+pacf(mod2$residuals, main="PACF of Quadratic model Residuals")
+
+#ACF and PACF plots for quadratic+periodic model 
+acf(mod3$residuals, main="ACF of Quadratic+periodic model Residuals") 
+pacf(mod3$residuals, main="PACF of Quadratic+periodic model Residuals")
+```
+
+
+### 1I) Diagnostic statistics
+
+(R2, t???distribution, F???distribution,etc.)
+The linear model has an adjusted R-squared of 0.5525 which is relatively high for a univariate linear model.
+
+The quadratic model has an adjusted R-squared of 0.5528 which is the same as the linear model. This would favor the linear model since we do not want to increase complexity if it does not explain more variance.
+
+The periodic model has an adjusted R-squared of 0.7922. It is more complex than the previous two models but the great increase in adjusted R-squared may justify its use.
+
+For all three models the F-Statistic rejects the null hypothesis suggesting there is a relationship between our predictors and the response variable.
+```{r}
+#Summary statistics of each model
+summary(mod1)
+summary(mod2)
+summary(mod3)
+```
+
+### 1J) AIC and BIC plots
+
+Both AIC and BIC agree and suggest that the quadratic+periodic model is the best choice and fits the data the best. 
+
+```{r}
+#AIC and BIC for each model
+AIC(mod1,mod2,mod3)
+BIC(mod1,mod2,mod3)
+```
+
+
+
+### 1K) Forecasting trend
+
+With the code below we forecasted the quadratic+periodic trend 20 steps (months) into the future. The red line indicate our point forecasts. The blue and purple lines represent the top and bottom of the 95% prediction interval respectively. As we can see our prediction interval grows the farther into future we forecast. 
+
+```{r, warning=F, message=F}
+#forcasting quadratic+periodic trend
+library(forecast)
+t2=seq(1976,1990,length=length(datats))
+x=forecast(mod3, newdata=t2, h = 20, level=.95)
+plot(mod3$fitted.values,main="Forecasts",xlab="year", ylab="Milk Production",type="l", xlim=c(0,335), ylim=c(550,1060))
+j=seq(168,335)
+lines(j, x$mean, type="l",add=T, col="red")
+lines(j, x$upper, type="l",add=T, col="blue")
+lines(j, x$lower, type="l", add=T, col="purple")
+```
+
+
+
+## Modeling and Forecasting Seasonality 
+### 2A) Creating seasonal dummies
+
+The code below creates a model with a full set of seasonal dummies. One of the seasonal dummy variables (season 1) is removed in order to avoid the dummy variable trap. According to our f-static the seasonal dummies are jointly significant.
+
+```{r}
+#Creating seasonal dummies 
+library(forecast)
+seasonal=tslm(datats~season)
+summary(seasonal)
+```
+
+
+
+### 2B) plotting seasonal factors
+
+Based on the following plot the seasonal effects trend upwards until May (month 5) when they peak then trend downwards until they bottom out around November and December. we can ignore the large spike at the beginning since it is an anomaly that stems from removing the first seasonal dummy.
+
+```{r}
+#plot factors (I dont think this is what he wants)
+plot(seasonal$coefficients,col='blue',xlab='Month',ylab='Coefficient',main='Seasonal Effects per month', type="l")
+```
+
+
+### 2C) Adding trend to seasonal model 
+
+The residuals for the full model have a mean of zero (indicated by the red line), which suggests that our forecasts will be unbiased. We can also see that the residuals also have constant variance. This makes calculating prediction intervals easier.   
+
+```{r}
+#Adding Seasonal effects to our quadratic+periodic trend model
+seasontrend = tslm(datats~time + I(time^2) + sin.t + cos.t + season)
+
+#Plotting full model against the data
+plot(seasontrend$fitted.values,seasontrend$residuals,col='blue',xlab='Fitted Values',ylab='Residuals',main='Residuals by Fitted Values')
+abline(h=mean(seasontrend$residuals), col="red")
+```
+
+The Residuals by Fitted Values graph below is fairly consistent and could almost be described as linear. However there does seem to be some weak sinusoidal tendencies.
+
+```{r}
+#plotting full model resdiuals vs fitted values 
+plot(datats,ylab="Monthly amount of milk production", xlab="Time", lwd=2, col='skyblue3', xlim=c(1962,1975),main='Monthly Milk Production Total Model Fit')
+lines(time,seasontrend$fitted.values,col="red3",lwd=2)
+```
+
+
+
+
+### 2D) Interpret respective summary statistics 
+
+In the full model almost every variable is statistically significant at the 5% confidence level except for the cos.t and season 8 variable. Our f-statistic suggests that the variables used are jointly significant and help explain variation in the explanatory variable. Our R-squared is very high at .98, which suggests that our model can almost completely explain the entire variation in the explanatory variable. 
+
+```{r}
+#Summary statistic of full model
+summary(seasontrend)
+```
+
+
+
+
+### 2E) Jarque Bera test
+
+The Jarque Bera Test rejects the null hypothesis that the residuals are normally distributed. 
+
+```{r}
+#test for normality for full model(trend+seasonality) model
+JarqueBera.test(seasontrend$residuals)
+```
+
+
+
+### 2F) ACF and PACF plots
+
+The ACF and PACF plots are more tame compared to the plots in 1h. Every value is in the bounds suggesting they are statistically indistinguishable from 0. This suggests that our data has less auto correlation and that there is little information left in the residuals that can be used for computing forecasts. 
+
+```{r}
+#ACF and PACF of full model residuals
+acf(seasontrend$residuals,main='ACF of Residuals')
+pacf(seasontrend$residuals,main='PACF of Residuals')
+```
+
+
+
+### 2G) Forecasting trend and seasonality model 
+
+With the code below we predicted the full model (trend+season) 20 steps (months) into the future. The blue line on the plot represents our point forecasts while the yellow shaded regions represent our 95% prediction interval. 
+
+```{r, warning=F, message=F}
+#creating new time variable
+t2=seq(1976,1990,length=length(datats))
+
+#Forecasting Full model (trend+Seasonality)
+pred2=forecast(seasontrend,newdata=t2, h = 20, level=.95)
+plot(pred2,main="Forecasts",xlab="year", ylab="Milk Production",shadecols="oldstyle")
+```
+
+
+# III) Conclusions and Future Works
+
+Our final model included a dummy variable for each month, a periodic term, and a quadratic term over time.  With these simple features, we are able to have a fitted model that matches the data almost exactly.  We've considered some possible work we can add to this:
+
+It would be interesting to get data after 1975 and use our model to make predictions on it.  We can also use this to make future predictions in 2019.  Additionally, our model doesn't fit the data perfectly. There may be some other predictors we can use when we fit our model.
+
+
+# IV) References
+
+https://datamarket.com/data/set/22ox/monthly-milk-production-pounds-per-cow-jan-62-dec-75#!ds=22ox&display=line
+
+Agriculture, Source: Cryer (1986), in file: data/milk, Description: Monthly milk production: pounds per cow. Jan 62 - Dec 75
+
+# V) R Source Code 
+
+R Code i
