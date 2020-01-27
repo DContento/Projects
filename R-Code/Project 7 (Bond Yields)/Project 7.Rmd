@@ -1,0 +1,292 @@
+---
+title: "Project 7"
+author: "David Contento"
+date: "April 22, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+For the data excercise I first downloaded the data from the FRED library and imported it into R. 
+
+```{r}
+#downloading and setting up data
+setwd("C:/Users/David/Desktop/Grad school work/406/HW1")
+library(ggplot2)
+#import and organize data
+library("readxl")
+dailydata<-read_excel("newfeds200628.xlsx")
+dailydata$dd<-as.Date(dailydata$dd)
+```
+
+I then converted the daily observations into monthly observations by taking the first value of each month. 
+
+```{r,message=F, warning=F}
+#converting to monthly data
+library(lubridate)
+dailydata$dmonth<-month(dailydata$dd)
+n<-length(dailydata$dmonth)
+mondata <- dailydata[which(dailydata$dmonth[2:n]!=dailydata$dmonth[1:n-1]),]
+mondata<-mondata[seq(dim(mondata)[1],1),]
+rm(dailydata)
+```
+
+We then construct the forward spot rates for all bonds from 2 to 7 years. 
+
+```{r,message=F}
+#creating forward spot rates
+attach(mondata)
+mondata$SPREAD02 <- 2*SVENY02-SVENY01-SVENY01
+mondata$SPREAD03 <- 3*SVENY03-2*SVENY02-SVENY01
+mondata$SPREAD04 <- 4*SVENY04-3*SVENY03-SVENY01
+mondata$SPREAD05 <- 5*SVENY05-4*SVENY04-SVENY01
+mondata$SPREAD06 <- 6*SVENY06-5*SVENY05-SVENY01
+mondata$SPREAD07 <- 7*SVENY07-6*SVENY06-SVENY01
+```
+
+
+I first determined the holding period returns of each bond (amount we gain from buying bond and selling it one year later). It is important to note that because the data is monthly we have to determine the holding period returns for 12 months and then add them up. 
+I then determined the difference between the realized rate of return and the one period yield.This allows us to determine the excess holding period return rates. 
+
+```{r}
+#Constructing holding period returns
+xx = c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+mondata$RET01<-append(xx,SVENY01[1:(length(dd)-12)],after = length(xx))
+mondata$RET02<-append(xx,2*SVENY02[1:(length(dd)-12)] - 1*SVENY01[13:length(dd)],after = length(xx))
+mondata$RET03<-append(xx,3*SVENY03[1:(length(dd)-12)] - 2*SVENY02[13:length(dd)],after = length(xx))
+mondata$RET04<-append(xx,4*SVENY04[1:(length(dd)-12)] - 3*SVENY03[13:length(dd)],after = length(xx))
+mondata$RET05<-append(xx,5*SVENY05[1:(length(dd)-12)] - 4*SVENY04[13:length(dd)],after = length(xx))
+mondata$RET06<-append(xx,6*SVENY06[1:(length(dd)-12)] - 5*SVENY05[13:length(dd)],after = length(xx))
+mondata$RET07<-append(xx,7*SVENY07[1:(length(dd)-12)] - 6*SVENY06[13:length(dd)],after = length(xx))
+mondata$RET10<-append(xx,10*SVENY10[1:(length(dd)-12)] - 9*SVENY09[13:length(dd)],after = length(xx))
+mondata$RET20<-append(xx,20*SVENY20[1:(length(dd)-12)] - 19*SVENY19[13:length(dd)],after = length(xx))
+mondata$RET30<-append(xx,30*SVENY30[1:(length(dd)-12)] - 29*SVENY29[13:length(dd)],after = length(xx))
+```
+
+```{r, warning=F,message=F}
+#constructing excess period returns 
+attach(mondata)
+mondata$XRET02<- RET02-RET01
+mondata$XRET03<- RET03-RET01
+mondata$XRET04<- RET04-RET01
+mondata$XRET05<- RET05-RET01
+mondata$XRET06<- RET06-RET01
+mondata$XRET07<- RET07-RET01
+mondata$XRET10<- RET10-RET01
+mondata$XRET20<- RET20-RET01
+mondata$XRET30<- RET30-RET01
+```
+
+I then tried to determine the coefficient $\bar{C}^{(n)}$ for bonds of maturity years 1-7.  $\bar{C}^{(n)}$ is defined as the difference between expected retrun minus the one year return. The equation is shown below
+
+$\bar{C}^{(n)}=Ey_t^{(n)}-y_t^{(1)}$
+
+```{r}
+#constructing the constant C
+barC = c(0,0,0,0,0,0,0)
+cx = c(1,2,3,4,5,6,7)
+barC[1]<- mean(SVENY01,trim=0,na.rm=TRUE)
+barC[2]<- mean(SVENY02-SVENY01,trim=0,na.rm=TRUE)
+barC[3]<- mean(SVENY03-SVENY01,trim=0,na.rm=TRUE)
+barC[4]<- mean(SVENY04-SVENY01,trim=0,na.rm=TRUE)
+barC[5]<- mean(SVENY05-SVENY01,trim=0,na.rm=TRUE)
+barC[6]<- mean(SVENY06-SVENY01,trim=0,na.rm=TRUE)
+barC[7]<- mean(SVENY07-SVENY01,trim=0,na.rm=TRUE)
+```
+
+I then also constructed mean excess holding returns by maturity. 
+
+```{r}
+#constructing mean excess returns by maturity 
+barD = c(0,0,0,0,0,0,0,0,0,0)
+cx = c(1,2,3,4,5,6,7)
+barD[1]<- 0
+barD[2]<- 2*barC[2]
+barD[3]<- 3*barC[3] - 2*barC[2]
+barD[4]<- 4*barC[4] - 3*barC[3]
+barD[5]<- 5*barC[5] - 4*barC[4]
+barD[6]<- 6*barC[6] - 5*barC[5]
+barD[7]<- 7*barC[7] - 6*barC[6]
+```
+
+We then construct an AR model using the following equation below for bond of maturity 2-7, 10, 20,and 30. 
+
+$E_tt_{t+n-1}^{(1)}=\rho^{n-1}(y_t^{(1)}-\bar{y}^{(1)})+\bar{y}^{(1)}$
+
+```{r,echo=F}
+#constructing AR model
+X<-SVENY01[1:(length(dd)-1)]-barC[1]
+Y<-SVENY01[2:length(dd)]- barC[1]
+outm<-lm(Y~X,data=mondata)
+rhom<-outm$coeff[2]^12
+ggplot()+geom_line(data = mondata, aes(x = dd, y = SVENY01, color = "black", linetype = "solid"), show.legend = FALSE) + 
+  geom_line(data = mondata, aes(x = dd, y = rhom^0*(SVENY01-barC[1])+barC[1],color = "red", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^1*(SVENY01-barC[1])+barC[1],color = "green", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^2*(SVENY01-barC[1])+barC[1] ,color = "gray0", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^3*(SVENY01-barC[1])+barC[1] ,color = "yellow", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^4*(SVENY01-barC[1])+barC[1] ,color = "sienna", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^5*(SVENY01-barC[1])+barC[1] ,color = "orange", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^6*(SVENY01-barC[1])+barC[1] ,color = "darkolivegreen", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^9*(SVENY01-barC[1])+barC[1] ,color = "darkred", linetype = "solid"), show.legend = FALSE)+ 
+  geom_line(data = mondata, aes(x = dd, y = rhom^19*(SVENY01-barC[1])+barC[1] ,color = "springgreen", linetype = "solid"), show.legend = FALSE)+
+  geom_line(data = mondata, aes(x = dd, y = rhom^29*(SVENY01-barC[1])+barC[1] ,color = "tan4", linetype = "solid"), show.legend = FALSE)+
+  geom_line(data = mondata, aes(x = dd, y = rhom^100*(SVENY01-barC[1])+barC[1] ,color = "cyan3", linetype = "solid"), show.legend = FALSE)+
+  ggtitle('Yield Forecasts from AR(1) Level Yield Dynamics')+xlab('dates')+ylab('forecast of yield')
+```
+
+Here we created an AR(1) forecast of the one year maturity bond using the first difference dynamics of the one year yield. 
+
+```{r,echo=F}
+#Yield Forecast AR(1) [Graph 2]
+X<-SVENY01[2:(length(dd)-1)]-SVENY01[1:(length(dd)-2)]
+Y<-SVENY01[3:(length(dd))]-SVENY01[2:(length(dd)-1)]
+outdm<-lm(Y~X,data=mondata)
+betadm<-outdm$coeff[2]
+alphadm<-outdm$coeff[1]
+plot(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)],type='n', main='Yield Forecasts from AR(1) First Difference Yield Dynamics',
+xlab='dates',ylab='forecast of yield')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)],type='l',col='black')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*1*alphadm+(1-betadm^(12*1+1))/(1-betadm)*X,
+type='l',col='blue')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*2*alphadm+(1-betadm^(12*2+1))/(1-betadm)*X,
+type='l',col='brown')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*3*alphadm+(1-betadm^(12*3+1))/(1-betadm)*X,
+type='l',col='green')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*4*alphadm+(1-betadm^(12*4+1))/(1-betadm)*X,
+type='l',col='red')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*5*alphadm+(1-betadm^(12*5+1))/(1-betadm)*X,
+type='l',col='yellow')
+lines(dd[2:(length(dd)-1)],SVENY01[2:(length(dd)-1)]+12*6*alphadm+(1-betadm^(12*6+1))/(1-betadm)*X,
+type='l',col='sienna')
+```
+
+Using the equation below we generate a random series the same length as our yield data and then run a regression in order to estimate beta. our rho is then equal to $\rho=\beta^{12}$, since the data is monthly the beta must be to the 12th power. 
+
+```{r,echo=F}
+#implications of Rho
+shocks<-rnorm(length(dd))
+x <- cumsum(shocks)
+ggplot(data=mondata, aes(x=dd,y=x, linetype = "solid"), show.legend = FALSE)+geom_line(data=mondata, aes(x=dd,y=x, linetype = "solid"), show.legend = FALSE)+ggtitle("randomly generated series")+xlab("dates")
+X = x[1:(length(dd)-1)]
+Y = x[2:length(dd)]
+outx<-lm(Y~X)
+rhox<-outx$coeff[2]^12
+```
+
+From the randomly generated series above we calculated rho to be the number calculated below. 
+
+```{r}
+#Rho
+print(rhox)
+```
+
+This high rho tells us that the data may not be stationary even though it may sometimes appear to be on a graph. 
+
+Then using the following formula we generate forecast of the one year yield 1-6, 9, 19, and 29 years into the future. compared to our last forecast we do not make any assumptions about the dynamics. 
+
+$E_ty_{t+n-1}^{(1)}+f_t^{(n)}-\bar{D}^{(n)}$
+
+```{r,echo=F}
+#showing that high Rho's do not convert to mean
+ggplot(data=mondata, aes(x=dd,y=SVENY01, linetype = "solid", color="black"), show.legend = FALSE)+
+  geom_line(data=mondata, aes(x=dd,y=SVENY01, linetype = "solid", color= "grey1"), show.legend = FALSE)+
+  geom_line(data=mondata, aes(x=dd,y=2*SVENY02-SVENY01-barD[2], linetype = "solid", color= "blue"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=,3*SVENY03-2*SVENY02-barD[3], linetype = "solid", color= "hotpink"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=4*SVENY04-3*SVENY03-barD[4], linetype = "solid", color= "gold"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=5*SVENY05-4*SVENY04-barD[5], linetype = "solid", color= "black"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=,6*SVENY06-5*SVENY05-barD[6], linetype = "solid", color= "wheat"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=,7*SVENY07-6*SVENY06-barD[7], linetype = "solid", color= "orange"), show.legend = FALSE)+
+  geom_line(data=mondata,aes(x=dd,y=,rhom^100*(SVENY01-barC[1])+barC[1], linetype = "solid", color= "brown"), show.legend = FALSE)+ggtitle('Yield Forecasts from Forward Rates Out 1 - 7 years')+xlab("dates")+ylab("forecasts of yield")
+```
+
+We can see that the forecasts are random walks and there is no tendency to revert back to the mean. 
+
+Lastly, i ran a regression on the yields and excess returns of the bonds (maturity 2-7) in order to determine whether the expectations hypothesis holds. If the expectations hypothesis is true then when we run the regression on yields we should get a beta of 1 and a beta of 0 on the excess returns regression. 
+
+```{r, warning=F,message=F, echo=F}
+#Testing the Expectation hypothesis
+#forward spot rates regression
+attach(mondata)
+X<-SPREAD02[1:(length(dd)-12)]
+Y<-SVENY01[13:(length(dd))]-SVENY01[1:(length(dd)-12)]
+outy02<-lm(Y~X,data=mondata)
+X<-SPREAD03[1:(length(dd)-2*12)]
+Y<-SVENY01[(2*12+1):(length(dd))]-SVENY01[1:(length(dd)-(2*12))]
+outy03<-lm(Y~X,data=mondata)
+X<-SPREAD04[1:(length(dd)-3*12)]
+Y<-SVENY01[(3*12+1):(length(dd))]-SVENY01[1:(length(dd)-(3*12))]
+outy04<-lm(Y~X,data=mondata)
+X<-SPREAD05[1:(length(dd)-4*12)]
+Y<-SVENY01[(4*12+1):(length(dd))]-SVENY01[1:(length(dd)-(4*12))]
+outy05<-lm(Y~X,data=mondata)
+X<-SPREAD06[1:(length(dd)-5*12)]
+Y<-SVENY01[(5*12+1):(length(dd))]-SVENY01[1:(length(dd)-(5*12))]
+outy06<-lm(Y~X,data=mondata)
+X<-SPREAD07[1:(length(dd)-6*12)]
+Y<-SVENY01[(6*12+1):(length(dd))]-SVENY01[1:(length(dd)-(6*12))]
+outy07<-lm(Y~X,data=mondata)
+slope.yield.change = c(outy02$coeff[2],outy03$coeff[2],outy04$coeff[2],outy05$coeff[2],outy06$coeff[2],outy07$coeff[2])
+rsquared.yield.change = c(summary(outy02)$r.squared,summary(outy03)$r.squared,summary(outy04)$r.squared,summary(outy05)$r.squared,summary(outy06)$r.squared,summary(outy07)$r.squared)
+```
+```{r, warning=F, echo=F}
+#regression on excess returns
+X<-SPREAD02[1:(length(dd)-12)]
+Y<-XRET02[13:length(dd)]
+outx02<-lm(Y~X,data=mondata)
+X<-SPREAD03[1:(length(dd)-12)]
+Y<-XRET03[13:length(dd)]
+outx03<-lm(Y~X,data=mondata)
+X<-SPREAD04[1:(length(dd)-12)]
+Y<-XRET04[13:length(dd)]
+outx04<-lm(Y~X,data=mondata)
+X<-SPREAD05[1:(length(dd)-12)]
+Y<-XRET05[13:length(dd)]
+outx05<-lm(Y~X,data=mondata)
+X<-SPREAD06[1:(length(dd)-12)]
+Y<-XRET06[13:length(dd)]
+outx06<-lm(Y~X,data=mondata)
+X<-SPREAD07[1:(length(dd)-12)]
+Y<-XRET07[13:length(dd)]
+outx07<-lm(Y~X,data=mondata)
+slope.excessreturns = c(outx02$coeff[2],outx03$coeff[2],outx04$coeff[2],outx05$coeff[2],outx06$coeff[2],outx07$coeff[2])
+rsquared.excessreturns = c(summary(outx02)$r.squared,summary(outx03)$r.squared,summary(outx04)$r.squared,summary(outx05)$r.squared,summary(outx06)$r.squared,summary(outx07)$r.squared)
+```
+
+```{r, echo=F}
+Horizon=2:7
+df=data.frame(Horizon,slope.yield.change,rsquared.yield.change,slope.excessreturns,rsquared.excessreturns)
+print(df)
+```
+
+
+From the output above we can see that the expectations hypothesis does not hold since changes in  the forward spot rates forecast changes in the expected excess holding period returns. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
