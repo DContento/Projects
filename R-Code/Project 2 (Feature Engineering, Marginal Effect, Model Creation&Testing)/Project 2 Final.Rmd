@@ -1,5 +1,5 @@
 ---
-title: "Black Friday Project"
+title: "Project 2"
 author: "David Contento"
 date: "December 4, 2018"
 output:
