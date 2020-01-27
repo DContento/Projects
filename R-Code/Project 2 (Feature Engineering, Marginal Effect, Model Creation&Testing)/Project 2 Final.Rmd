@@ -1,0 +1,447 @@
+---
+title: "Black Friday Project"
+author: "David Contento"
+date: "December 4, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+In this report I will be trying to construct a model that accurately predicts the amount (in dollars) of purchases a customer will make based on their individual characteristics. I will begin the process by first looking at the structure of the data and performing any cleaning and pre-processing. The data used in this project was gathered from Kaggle, and the purpose of this project was to submit the model as part of a contest. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(dev = 'png')
+```
+
+```{r, include=FALSE}
+library(car)
+library(pastecs)
+library(psych)
+library(corrplot)
+library(fitdistrplus)
+library(ggplot2)
+library(dplyr)
+library(margins)
+library(effects)
+library(crossval)
+library(DAAG)
+library(tseries)
+library(foreign) 
+library(multcomp)
+library(lmtest)
+library(car) 
+library(AER) 
+library(broom) 
+library(leaps) 
+library(tidyverse) 
+library(caret)
+library(car) 
+library(AER) 
+library(broom) 
+library(leaps)
+library("margins")
+setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 2")
+data=read.csv("BlackFriday.csv")
+```
+
+First I check the structure of our data and determine whether or not there are any NAs in the data. 
+
+```{r, include=TRUE}
+str(data)
+#The data is clearly cross-sectional
+#checking which variables have NA's
+colSums(is.na(data))
+```
+
+Since there are NAs in Product_Category_2 and Product_Category_3 i combined those into a dummy variable called "multi". Multi takes on a value of 1 if the product belongs to multiple categories and a value of 0 if the product belongs to only one category. Using this method i do not need to include all three dummy variables. 
+
+```{r,include=TRUE}
+#combining product category 2 and 3 variable into dummy:
+#with 1 if in more than one product category and 0 if not
+data$multi = 1 
+data[is.na(data$Product_Category_2), "multi"] = 0
+
+#removing product category 2 and 3 variables
+data <- data[, -c(10:11)]
+str(data)
+colSums(is.na(data))
+```
+
+Now I will move on to the descriptive analysis. Notice that most of our variables are categorical and therefore I can only make histograms for Purchase and Occupation. It is important to note that purchases (total dollar amount of a persons transaction) is the dependent variable for this report.
+
+I now conduct some data analysis on the variables to see if they are skewed, have outliers, or need to be transformed. I look at the Quantile-Quantile plots for Purchase in order to determine its normality.
+
+```{r, include=F}
+attach(data)
+```
+```{r, include=TRUE}
+#Histogram of Purchases
+par(mfrow=c(1,1))
+hist(Purchase, breaks = "FD", col = "skyblue2")
+rug(Purchase)
+S(Purchase)
+par(mfrow=c(1,1))
+
+#Cullen-Frey graph of Purchases
+descdist(Purchase)
+
+#Fitting Distributions to Purchases
+fit.norm = fitdist(as.numeric(Purchase), "norm")
+fit.unif = fitdist(as.numeric(Purchase),"unif")
+plot.legend = c("Normal", "Uniform")
+par(mfrow=c(1,2))
+qqcomp(list(fit.norm, fit.unif), legendtext = plot.legend)
+qqPlot(~ Purchase, data = data, id = list(n=3))
+#I fit a gamma distribution to the inc data
+```
+
+Purchase looks fairly normal from the QQ-Plots but I log the data just to make sure there isn't a better transformation.
+
+```{r}
+#Histogram of Log(Purchases)
+hist(log(Purchase), breaks = "FD")
+qqPlot(log(Purchase))
+```
+
+Based on the QQ plot I can see that Purchase's should not be transformed as it makes the data less normal. Next, I looked at the histogram for Occupation.
+
+```{r}
+#Histogram of occupation
+par(mfrow=c(1,1))
+hist(Occupation, breaks = "FD", col = "skyblue2")
+S(Occupation)
+```
+
+This plot illustrates how many observed individuals fall in specific Occupation categories. I can see from the histogram that the data is not skewed, does not contain any outliers, and does not need to be transformed. I confirmed these results using the Box-Cox transformation test. 
+
+Next, I looked at the box plots to see what the spread of purchase amount looks like for each of the variables.
+
+```{r, echo=F}
+ggplot(data, aes(x=as.factor(Age), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of Age variables")+ xlab("Age")
+
+ggplot(data, aes(x=as.factor(Occupation), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of occupation variables")+ xlab("Occupation")
+
+ggplot(data, aes(x=as.factor(Gender), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of Gender variables")+ xlab("Gender")
+
+ggplot(data, aes(x=as.factor(City_Category), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of City Category")+ xlab("City Category")
+
+ggplot(data, aes(x=as.factor(Stay_In_Current_City_Years), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of years in current city")+ xlab("Years in Current City")
+
+ggplot(data, aes(x=as.factor(Marital_Status), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of Marital Status")+ xlab("Marital Status")
+
+ggplot(data, aes(x=as.factor(Product_Category_1), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of Product Category")+ xlab("Product Category")
+
+ggplot(data, aes(x=as.factor(multi), y=Purchase)) + 
+  geom_boxplot(fill="skyblue2", alpha=0.2) + ggtitle("Box plot of Multi (Porduct Category")+ xlab("Multi (Product category")
+```
+
+I make the following observations based on the graphs above:
+
+1. The mean purchase amount is fairly evenly distributed across the specific category levels within each variable except for Product Category and multi.
+
+2. I noticed that there is a larger spread in purchase amount when the product belongs to only one category.
+
+3. Different product categories have different purchase amount means with different spreads.
+
+Now that I have looked at some of the univariate and bivariate characteristics, I create a regression model with all of the additive terms.
+
+```{r, include=TRUE}
+#Model 1
+mod.1 <- lm(Purchase ~ Gender + Age + Occupation +  City_Category+Stay_In_Current_City_Years + 
+              Marital_Status+Product_Category_1 + multi, data)
+S(mod.1)
+```
+
+Since Stay_In_Current_City was not significant (except for Stay_In_Current_City_2) I used a Chow-Test to determine if the estimated coefficient of any of the "Stay in Current City" variables are equal to zero.
+
+```{r}
+hyp <- c("Stay_In_Current_City_Years1 = 0", "Stay_In_Current_City_Years2 = 0",
+         "Stay_In_Current_City_Years3 = 0", "Stay_In_Current_City_Years4+ = 0")
+linearHypothesis(mod.1, hyp)
+```
+
+Because the p-value is greater than 0.05, there is insufficient evidence to justify keeping "Stay in Current City" in the model. I removed this in the following model.
+
+```{r}
+#Model 2 (stay in city removed)
+mod.2 <- lm(Purchase ~ Gender + Age + Occupation + City_Category +
+              Marital_Status+Product_Category_1 + multi, data)
+S(mod.2)
+```
+
+Now that all the variables are statistically significant, I looked at the effects plots. Our $R^2$ remains the same.
+
+```{r}
+plot(effect(mod = mod.2, "Gender"), main="Marginal Effect of Gender on Purchases")
+```
+
+From the Gender effect plot, I can determine that males spent more on Black Friday than females. The spread on Purchases for males is also smaller than the spread on Purchases for females.
+
+Intuitively, this may be a result of males buying more expensive/big-ticket items on Black Friday than females.
+
+```{r}
+plot(effect(mod = mod.2, "Age"), main="Marginal Effect of Age on Purchases")
+```
+
+Here I see that in general, purchases go up as age increases, with more variability amongst the lower and higher age ranges.
+
+However, I do see that purchases plateau between the age groups of 36-45 and 46-50.
+
+Intuitively, I believe the variability is due to younger age groups because they could be spending either their money or their parents' money. For the older age groups the variability could be due to retirees in this group with lower disposable income.
+
+```{r}
+#Marginal effect plot of City Category
+plot(effect(mod = mod.2, "City_Category"), main="Marginal Effect of City Category on Purchases", xlab="City Category")
+```
+
+In City Category, I can see that the overall dollar value of purchases made in City C were much higher than B and C. This could mean that items are more expensive in city C or there is more variety (people shop more).
+
+```{r}
+#Marginal effect plot of Occupation
+plot(effect(mod = mod.2, "Occupation"), main="Marginal Effect of Occupation on Purchases", xlab="Occupation")
+```
+
+The Occupation effect plot shows us that as the Occupation category increases, then purchases increase. This could indicate that the larger the occupation category, the higher the income. If this were the case, intuitively, it makes sense that there is a little more variation at the lower and higher occupation category values. This is because at lower levels of income, you are likely to have a different spending behavior than other people in the same income bracket.
+
+```{r}
+#Marginal effect plot of Marital Status
+plot(effect(mod = mod.2, "Marital_Status"), main="Marginal Effect of Marital Status on Purchases", xlab="Marital Status")
+```
+
+From this effects plot, it seems that purchases are lower for married individuals versus single individuals.
+
+```{r}
+#Marginal effect plot of product category 1
+plot(effect(mod = mod.2, "Product_Category_1"), main="Marginal Effect of Product Category 1 on Purchases", xlab="Porduct Category 1")
+```
+
+For Product Category_1, I see that the higher the number of the category, the lower the purchase dollar amount. This could mean that higher category numbers are items that are cheaper or that less people buy them.
+
+```{r}
+#Marginal effect plot of product category
+plot(effect(mod = mod.2, "multi"), main="Marginal Effect of Product Categories on Purchases", xlab="Multi (Product category)")
+```
+
+This plot shows that if a product belongs to more than one category then, the dollar value of purchases increase. This could indicated that the items hold more value if they belong to multiple categories or they are items that are purchased more.
+
+From the effects plots, I noticed that Gender and multi variables looked almost identical and wanted to test if there was any degree of collinearity between the two variables. In order to do this, I looked at their correlation.
+
+```{r}
+#Correlation of product categories and gender 
+cor(multi, (as.numeric(Gender))-1)
+```
+
+Because the result is so low I can safely assume that our multi and Gender variables are significantly different from each other.
+
+Now that I have the effects plots, I use the Ramsey RESET test in order to determine whether or not our current model is mis-specified.
+
+```{r}
+#Ramsey RESET test
+resettest(mod.2, power=2, type="regressor") 
+```
+
+Now I decided to look at interaction terms and possible variable transformations because I found from the Ramsey Reset Test that our model is mis-specified with just the additive terms. 
+
+I first try adding the interaction term of gender and age because spending at the different age groups might be different depending on gender. 
+
+```{r}
+#Model 3 (Adding gender:age interaction term) BENCHMARK
+mod.3 <- lm(Purchase ~ Gender + Age + Occupation + Marital_Status + Product_Category_1 + 
+              City_Category + multi + Gender:Age, data)
+S(mod.3)
+```
+
+After adding in the interaction term of Gender and Age, I see that the Adjusted R-Squared improves and the variable estimates do not vary by much. Additionally, the estimates remain statistically significant. The interaction terms of Gender on the different age groups have varying degrees of statistical significance. Going forward I use this model as a benchmark for comparison. 
+
+Next I show the predictor effects plots of the interaction between Gender and Age on Purchase. 
+
+```{r}
+#plotting the predictor effects of gender and age on purchase
+plot(predictorEffects(mod.3, ~ Gender:Age), lines=list(multiline=TRUE))
+```
+
+I can see from the plots that males Purchases are higher at every age group. The difference in Purchases between males and females is large at the age group of "0-17" and decreases as the age group increases. So female spending increases faster than male spending as the age group increases and begins to converge with male spending. These two plots are showing us the same information. 
+
+Next I try adding the interaction term of gender and occupation because the spending might be different in the occupation categories depending on the gender. 
+
+```{r}
+#Model 4 (Adding gender:occupation interaction term)
+mod.4 <- lm(Purchase ~ Gender + Age + Occupation + Marital_Status + Product_Category_1 + 
+              City_Category + multi + Gender:Occupation, data)
+S(mod.4)
+```
+
+The adjusted R-Squared does not change when I add this interaction term compared to the model with just interaction terms. Additionally, Occupation becomes insignificant, while the interaction of Occupation and Gender is significant. 
+
+```{r}
+#Marginal effect of Gender:occupation interaction (with occupation variable)
+plot(predictorEffects(mod.4, ~ Gender:Occupation), lines=list(multiline=TRUE))
+```
+
+I can see from the plots that males spend more at every Occupation category. Females spend the least in occupation category 20 while males spend the most in occupation category 20. This is true for every occupation level. 
+
+I now try adding the gender occupation interaction term, but take out the occupation variable because it was insignificant in the previous model with this interaction term. 
+
+```{r}
+#Model 5 (adding gender:occupation interaction term, but without occupation term)
+mod.5 <- lm(Purchase ~ Gender + Age + Marital_Status + Product_Category_1 + 
+              City_Category + multi + Gender:Occupation, data)
+S(mod.5)
+```
+
+The Adjusted R-Squared does not change after I take out the occupation category and statistical significance do not change for the variables. However, the interaction of females with occupation becomes insignificant. 
+
+Next I show the predictor effects plots of the gender occupation interaction term in this model. 
+
+```{r}
+#Marginal effect of Gender:occupation interaction (without occupation variable)
+plot(predictorEffects(mod.5, ~ Gender:Occupation), lines=list(multiline=TRUE))
+```
+
+The predictor effects of spending based on gender and occupation does not change from the previous model. 
+
+After observing in the effects plots that the marginal effect of occupation on purchase is linear and strictly increasing, I think that the occupation category is separated based on purchasing power because the effect plot shows that as the occupation category increases the spending increases. Due to this, I think adding a quadratic term to occupation will improve the model as it will capture the decreasing marginal returns in spending to an increase in the occupation category. 
+
+```{r}
+#Model 7 (with quadratic occupation)
+mod.6 <- lm(Purchase ~ Gender + Age + Occupation + I(Occupation^2) + City_Category +
+              Marital_Status + Product_Category_1 + multi, data)
+S(mod.6)
+```
+
+From the output I can see that the Adjusted R-Squared of 0.1156 has improved and all of the variables are statistically significant. I can see that the estimate of the quadratic occupation term is negative, which indicates that there is decreasing marginal returns to spending as the occupation category increases as I expected. 
+
+Next I try adding in the gender and age occupation interaction term with the quadratic occupation term in the model. 
+
+```{r}
+#model with quadratic occupation and gender:age
+mod.7 <- lm(Purchase ~ Gender + Age + Occupation + I(Occupation^2) + Gender:Age + City_Category +
+              Marital_Status + Product_Category_1 + multi, data)
+S(mod.7)
+```
+
+The Adjusted R-Squared increases after I add the interaction term. The variables significance do not change. However, the different interactions between age and gender have varying degrees of significance. 
+
+```{r}
+#Box-Cox transformation test
+powerTransform((Occupation+1)~1,data, family = "bcPower")
+```
+```{r, echo=F}
+symbox(Purchase, main="Symbox Plot of Purchases")
+symbox(Occupation, powers = c(-2,-1.5,-1,-0.5,0,0.5,1,1.5,2), main="Symbox Plot of Occupation")
+```
+
+The output above from the power transform function suggests that I should perform a square root transformation to the occupation variable (I rounded the transformation parameter to the nearest tenth). I can confirm the output of the power transform function by looking at the symbox transformation plot of the occupational variable. The symbox plot also suggests that I should perform a square root transformation. 
+
+```{r}
+#Model 8 (with sqrt(occupation) and gender:age terms)
+mod.8 <- lm(Purchase ~ Gender + Age + I(sqrt(Occupation)) + Gender:Age +
+              Marital_Status + Product_Category_1 + City_Category, data)
+S(mod.8)
+```
+
+After adding the square root occupation term I can see that the significance for the Age18-25, GenderM:Age26-35, 
+GenderM:Age46-50, and GenderM:Age51-55 variables dropped, when compared to model 7. the GenderM:Age51-55 variable became completely insignificant, while the other terms dropped to a significance level of 10%. The R_squared for model 8 is also lower than 7, which suggests that the model is worse at explaining the variation in the data. In order to confirm which model is better I looked at the BIC and AIC for each regression. 
+
+```{r}
+#comparing AIC and BIC of Model 7 and 8
+AIC(mod.8, mod.7)
+BIC(mod.8, mod.7)
+```
+
+From the output above I can see that model 7 has a lower AIC and BIC 
+compared to model 8, which includes the square root occupation term. Since AIC and BIC are used for model comparison I can conclude that model 7 fits and explains the data better than 
+model 8.
+
+```{r}
+#Variance Inflation Factor for Model 7
+vif(mod.7)
+```
+
+  Evaluating the variance inflating factor suggests there is a high degree of colinearity between most of our variables. However, this is to be expected. Since our variables are almost entirely categorical, there is not a wide range of variation and therefore little opportunity for the values of each variable to not be colinear. While I will not use these results to change our model decision, it is worth noting for the sake of completeness.
+
+```{r}
+#Creating Stepwise model 
+step.model <- stepAIC(mod.2, direction = "backward", trace = FALSE) 
+summary(step.model)
+```
+
+  When I do a backwards selection on the baseline model (only additive terms), the results suggest to use all the additive terms. These results will be used to compare the results of applying the same process to our selected model.
+
+```{r}
+#Creating Stepwise Model 
+step.model2 <- stepAIC(mod.7, direction = "backward", trace = FALSE) 
+summary(step.model2)
+```
+
+  In performing the backward selection, I see that all but the interaction between gender and the 51 to 55 age range and also the 18 to 25 age range are significant. Next I will repeat the process using a stepwise selection process.
+
+```{r}
+#Creating Stepwise Model 
+step.model3 <- stepAIC(mod.7, direction = "both", trace = FALSE) 
+summary(step.model3)
+```
+
+  In terms of significance, the results of backward selection and stepwise selection on our model are identical. The only terms that may possibly be desirable to remove is the previously mentioned interaction term and the 18 to 25 age range. I will continue the model evaluation with a Mallow CP.
+
+```{r}
+#Mallow CP
+ss=regsubsets(Purchase ~ Gender + Age + Occupation + I(Occupation^2) + City_Category + Gender:Age +
+                Marital_Status + Product_Category_1 + multi,method=c("exhaustive"),nbest=3,data=data) 
+subsets(ss,statistic="cp",legend=F,main="Mallows CP",col="steelblue4", ylim = c(500,600))
+
+data$A1 = 0 
+data[(data$Age=="18-25"), "A1"] = 1
+
+data$A51 = 0 
+data[(data$Age=="51-55"), "A51"] = 1
+
+data$City_C = 0
+data[data$City_C == "C", "City_C"] = 1 
+
+test1 = lm(Purchase ~ Gender + A1 + A51 + Occupation + I(Occupation^2) + City_C + Product_Category_1 + multi, data)
+test2 = lm(Purchase ~ Gender + A1 + A51 + City_Category + Product_Category_1 + multi + Gender:A1, data)
+
+AIC(test1, mod.7, test2)
+BIC(test1, mod.7, test2)
+```
+
+  For the Mallow CP, the resulting graph has been rescaled to exclude all the results that are well above the models of interest so as to see the suggested models more clearly. Interestingly enough, when I compare the two best suggestions from Mallow C with our original model using AIC and BIC, our original model scores better. As a result, I will use the following model:
+  
+  \[Purchases = \beta_o+\beta_1Male + \beta_2Occupation + \beta_3Occupation^2 + \beta_4MaritalStatus + \beta_5Multi + \beta_6 Age + \beta_7Male\times AGE + \beta_8City\]
+
+  Now that I have come to our model, I will plot the residuals, plot the fitted values, and perform a 5-fold cross-validation as a robustness check.
+
+```{r}
+#Plot of Residuals from models
+plot(mod.7$fitted.values, mod.8$residuals, ylab="Model 8 Residuals", xlab="Model 7 Residuals")
+
+#Plot of occupation variable and Model 7 residuals
+plot(Occupation, mod.7$residuals, ylab="Residuals of Model 7")
+
+#Model 7 is preferred
+```
+
+  The residual plot and fitted values plot do not seem to show us very much. This is likely because most of the values are categorical. I can say that the residual plot seems to suggest that the errors are random about zero, which is good. I now move on to cross-validation.
+  
+It is important to note that I did not test for heteroskedasticity since the majority of our data is categorical. 
+
+```{r}
+cv.lm(data = data, form.lm = mod.7, m = 5, plotit = TRUE, printit = FALSE)
+```
+
+  From the 5-fold cross validation test, I can see that there is a high level of agreement across the different folds. This indicates that our model does reasonably well at predicting purchases for out of model observations. The five-fold cross validation test seaperates the data into five segments and uses 4/5 of those segments to predict the other 1/5. 
+
+```{r}
+summary(mod.7)
+```
+
+  Reviewing the results of our model, I see that males have consistently higher purchases relative to females across all age groups. Also, while purchases generally increase with age, there are dips in purchases for age group 46 to 50 and group 55 and older. Also, for each increase in the occupation value I see a 25.88 reduction in purchases plus 157.75 for each additional occupation value, on average. For city categories, I see that city category B and C are associated with  165.14 and 716.71 more purchases respectively, all else equal. Being married is associated with a 47.87 reduction in purchases, all else constant. For product category, an increase of the product category number by 1 is associated with a 355.1 reduction in purchases, all else constant. A product having multiple categories, however, is associated with a 1140.35 increase in purchases, all else constant.
+
