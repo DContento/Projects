@@ -1,5 +1,5 @@
-#BUSINESS BANKING REPORTS (Only works on Monday!!!!!!!)
-setwd("C:/Users/dcontento/Desktop/Weekly/Bbanking/Monday")
+#BUSINESS BANKING REPORTS 
+setwd("C:/Users/dcontento/Desktop/Weekly/Bbanking")
 library(RODBC)
 library(XLConnect)
 #create a script that pulls sql data, cleans it up, and sends to through mail (automating data pulls into table like OLB)
