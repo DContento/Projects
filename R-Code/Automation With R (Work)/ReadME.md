@@ -8,3 +8,5 @@ EEXPULL & OLB-
 Are SQL queries that are imbedded in an r script which are set to run from a batch file. These queries pull data from our EDW and store them in specific tables. These were used temporarily as a way to capture daily changes in online banking (OLB) preferences for our
 customers. The EEXPULL data was used to pull EEX applications and their status daily so that we could monitor the progression of our home 
 equity applications.
+
+Example of Batch- Text file which shows the command that was used to execute the R script which was located in the batch file. 
