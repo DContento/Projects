@@ -44,7 +44,7 @@ setwd("C:/Users/David/Desktop/Grad school work/Fall 2018/403A/Project 2")
 data=read.csv("BlackFriday.csv")
 ```
 
-First I check the structure of our data and determine whether or not there are any NAs in the data. 
+First I checked the structure of the data and determine whether or not there are any NAs in the data. 
 
 ```{r, include=TRUE}
 str(data)
