@@ -1,4 +1,2 @@
-A look at the Taylor Rule which is an equation that attempts to determine the apprpriate interest rate that the federal reserve should 
-set based on current inflation and output gap. There are different forms of the Taylor Rule each with different smoothing parameters and 
-results. In this project we look at the accuracy of the Taylor Rule compated to the actual rate that the federal reserve set. This project 
-was used in part to help determine whether the monetary policy set by the federal reserve worsened or benefited the great recession of 08'.
+A look at the Taylor Rule which is an equation that attempts to determine the appropriate interest rate that the federal reserve should 
+set based on current inflation and the output gap. There are different forms of the Taylor Rule each with different smoothing parameters and results. In this project we look at the accuracy of the Taylor Rule compared to the actual rate that the federal reserve set. This project was used in part to help determine whether the monetary policy set by the federal reserve worsened or benefited the great recession of 08'.
