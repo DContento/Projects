@@ -18,8 +18,8 @@ Ytr = data[S[:100], 6:]
 X_test = data[S[100:], :6]
 Y_test = data[S[100:], 6:].ravel()
 
-## step 2 randomly split Xtr/Ytr into two even subsets: use one for training, another for validation.
-#############placeholder 1: training/validation #######################
+## Randomly split Xtr/Ytr into two even subsets: use one for training, another for validation.
+############# Training/Validation #######################
 n2 = len(Xtr)
 S2 = np.random.permutation(n2)
  
@@ -31,14 +31,15 @@ x_validation=
 y_validation= 
 #############placeholder end #######################
 
-## step 3 Model selection over validation set
+
+## Model selection over validation set
 # consider the parameters C, kernel types (linear, RBF etc.) and kernel
 # parameters if applicable. 
 
 
-# 3.1 Plot the validation errors while using different values of C ( with other hyperparameters fixed) 
+# Ploting the validation errors while using different values of C (with other hyperparameters fixed) 
 #  keeping kernel = "linear"
-#############placeholder 2: Figure 1#######################
+############# Figure 1 #######################
 c_range =  #
 svm_c_error = []
 for c_value in c_range:
@@ -54,9 +55,7 @@ plt.ylabel('error')
 plt.show()
 #############placeholder end #######################
 
-
-# 3.2 Plot the validation errors while using linear, RBF kernel, or Polynomial kernel ( with other hyperparameters fixed) 
-#############placeholder 3: Figure 2#######################
+############# Figure 2 #######################
 kernel_types = ['linear', 'poly', 'rbf']
 svm_kernel_error = []
 for kernel_value in kernel_types:
@@ -74,20 +73,17 @@ plt.show()
 #############placeholder end #######################
 
 
-## step 4 Select the best model and apply it over the testing subset 
-#############placeholder 4:testing  #######################
-
+## Selecting the best model and applying it over the testing subset 
+############# Testing  #######################
 best_kernel = 'poly'
 best_c = 1 # poly had many that were the "best"
 model = svm.SVC(kernel=best_kernel, C=best_c)
 model.fit(X=x_train, y=y_train)
+############# placeholder end #######################
 
-#############placeholder end #######################
 
-
-## step 5 evaluate your results in terms of accuracy, real, or precision. 
-
-#############placeholder 5: metrics #######################
+## Evaluating results in terms of accuracy, real, or precision. 
+############# Metrics #######################
 # func_confusion_matrix is not included
 # You might re-use this function for the Part I. 
 y_pred = model.predict(X_test)
@@ -98,14 +94,8 @@ print(conf_matrix)
 print("Average Accuracy: {}".format(accuracy))
 print("Per-Class Precision: {}".format(precision_array))
 print("Per-Class Recall: {}".format(recall_array))
-
 #############placeholder end #######################
 
-#############placeholder 6: success and failure examples #######################
-# Success samples: samples for which you model can correctly predict their labels
-# Failure samples: samples for which you model can not correctly predict their labels
-
-#############placeholder end #######################
 
 
 
