@@ -3,4 +3,4 @@ folder contains util files that define functions which are later imported in the
 
 FNN- Fits a feed forward neural network to a set of images and trains the model to predict what number the image is displaying. Model is created using Tensorflow and Keras. 
 
-SVM- Fits a Support Vector Machine to a dataset and created 
+SVM- Fits a Support Vector Machine to a dataset which tries to predict the color of a crab based on certain morphological characteristics.
