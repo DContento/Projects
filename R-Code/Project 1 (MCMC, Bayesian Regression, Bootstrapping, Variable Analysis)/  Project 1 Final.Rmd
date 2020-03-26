@@ -96,7 +96,7 @@ Based on these plots, we can determine that the bootstrap estimates are stable, 
 
 ##Part B) Markov Chain Monte Carlo
 
-First, we must run a Bayesian regression using MCMC and analyze 
+First, we must run our Bayesian regression model using MCMC and analyze 
 the estimates:
 
 ```{r, message=F}
