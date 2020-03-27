@@ -19,7 +19,7 @@ data_SP = read.csv("SP.csv")
 data_GE = read.csv("GE.csv")
 ```
 
-We have daily stock data from Yahoo Finance dating back to January 2nd, 1962 for the S&P 500 and General Electric. We chose General Electric because it has a large amount of data and likely moves closely with the S&P 500 (i.e Market beta close to 1).
+We have daily stock data from Yahoo Finance dating back to January 2nd, 1962 for the S&P 500 index and General Electric stock. We chose General Electric because it has a large amount of data and likely moves closely with the S&P 500 (i.e Market beta close to 1).
 ```{r}
 #running CAPM to determine market beta
 library(readxl)
