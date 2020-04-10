@@ -7,8 +7,7 @@ from sklearn.linear_model import LogisticRegression
 
 # Fill in the codes between "%PLACEHOLDER#start" and "PLACEHOLDER#end"
 
-# step 1: generate dataset that includes both positive and negative samples,
-# where each sample is described with two features.
+# step 1: generate dataset
 # 250 samples in total.
 
 [X, y] = getDataSet()  # note that y contains only 1s and 0s,
@@ -36,8 +35,7 @@ func_DisplayData(X, y, 1, 'All samples')
 # number of training samples
 nTrain = 120
 
-######################PLACEHOLDER 1#start#########################
-# write you own code to randomly pick up nTrain number of samples for training and use the rest for testing.
+###############################################
 # WARNIN: 
 import itertools, random
 deck = list(range(0, 250))
@@ -51,7 +49,7 @@ trainY = y[trainindex,:]
  
 testX = X[testindex,:]               
 testY = y[testindex,:]  
-####################PLACEHOLDER 1#end#########################
+#############################################
 
 # plot the samples you have pickup for training, check to confirm that both negative
 # and positive samples are included.
@@ -63,11 +61,8 @@ plt.show()
 
 
 #  step 2: train logistic regression models
-
-
-######################PLACEHOLDER2 #start#########################
-# in this placefolder you will need to train a logistic model using the training data: trainX, and trainY.
-# please delete these coding lines and use the sample codes provided in the folder "codeLogit"
+###############################################
+#train a logistic model using the training data: trainX, and trainY.
 
 # Using Sk learn to fit regression model 
 clf = LogisticRegression()
@@ -123,14 +118,14 @@ my_score = float(score) / float(length)
 
 print('Score of SK learn method:', scikit_score)
 print('Score of Gradient Descent method:', my_score)
-######################PLACEHOLDER2 #end #########################
+###############################################
 
  
  
 # step 3: Use the model to get class labels of testing samples.
  
 
-######################PLACEHOLDER3 #start#########################
+###############################################
 # codes for making prediction, 
 # with the learned model, apply the logistic model over testing samples
 # hatProb is the probability of belonging to the class 1.
@@ -142,7 +137,7 @@ gdyHat = np.array([float(int(val >= .6)) for val in gdyHat])
 sklearnyhat = clf.predict(testX)
 #PLACEHOLDER#end
 
-######################PLACEHOLDER 3 #end #########################
+###############################################
 
 
 # step 4: evaluation
