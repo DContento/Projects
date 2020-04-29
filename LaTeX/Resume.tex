@@ -1,0 +1,94 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Medium Length Professional CV
+% LaTeX Template
+% Version 2.0 (8/5/13)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Author:
+% David Contento 
+%
+% Important note:
+% This template requires the resume.cls file to be in the same directory as the
+% .tex file. The resume.cls file provides the resume style used for structuring the
+% document.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass{resume} % Use the custom resume.cls style
+
+\usepackage[left=0.75in,top=0.6in,right=0.75in,bottom=0.6in]{geometry} % Document margins
+\newcommand{\tab}[1]{\hspace{.2667\textwidth}\rlap{#1}}
+\newcommand{\itab}[1]{\hspace{0em}\rlap{#1}}
+\name{David Contento} % Your name
+\address{884-A 9th Avenue, Honolulu, HI 96816} % Your address
+%\address{123 Pleasant Lane \\ City, State 12345} % Your secondary addess (optional)
+\address{(+1)954-562-3893 \\ dcontento1996@gmail.com} % Your phone number and email
+
+\begin{document}
+%----------------------------------------------------------------------------------------
+%	PROFILE SECTION
+%----------------------------------------------------------------------------------------
+\begin{rSection}{Profile}
+With a master’s degree in Applied Economics I am eager to put my skills to work by helping companies and individuals find creative solutions to their problems/inquires. I am a self motivated, and analytically driven individual that possesses a strong understanding of economic concepts, different modeling techniques, and programming. 
+\end{rSection}
+
+%----------------------------------------------------------------------------------------
+%	EDUCATION SECTION
+%----------------------------------------------------------------------------------------
+\begin{rSection}{Education}
+
+{\bf Florida State University, Tallahassee} \hfill {\em June 2015 - May 2018} 
+\\ Bachelor of Science, Economics \hfill { \bf GPA: 3.82}
+\\ Minor, General Business \hfill {\em Magna Cum Laude}
+\\ President and Deans List\\
+\\{\bf University of California Los Angeles, Los Angeles} \hfill {\em July 2018 - June 2019} 
+\\ Masters of Applied Economics\hfill { \bf GPA: 3.77 }
+%Member of Upsilon Pi Epsilon \\
+\end{rSection}
+
+\begin{rSection}{Professional Experience}
+\begin{rSubsection}{American Savings Bank, Honolulu}{July 2019-Present}{Sales Data Analyst}{}
+\item Generate Ad Hoc and scheduled reports for corporate and retail management regarding our retail branch performance as well as other key business units such as Investment Services, Home Loans, and Business Banking.
+\item Responsible for gathering, scrubbing, and organizing data from our EDW (MSSQL) and administrating/testing our Microsoft CRM platform.
+\item Used R/Python to clean/visual data, generate models, and derive actionable insight regarding our market base and retail performance
+\end{rSubsection}
+\end{rSection}
+%--------------------------------------------------------------------------------
+%    Projects And Seminars
+%-----------------------------------------------------------------------------------------------
+\begin{rSection}{Projects}
+{\bf Labor Market Efficiency in Major League Baseball}\\
+Analyzed the Major League Baseball labor markets to determine if they are still inefficient as well as determine which player statistics are currently being overvalued or undervalued. Used refined regression models, VAR models, Granger-Causality tests, IRFs, and other Econometric techniques  to answers different questions regarding player salary, valued statistics, and payroll effects. 
+
+{\bf Black Friday Sales Analysis}\\
+ Used a Black Friday sales data set provided by Kaggle in order to predict the amount a person would purchase on BF based on their individual characteristics. Created a regression model and provided some benchmarks of how well it predicts. Also performed a descriptive analysis of variables, performed model tests for robustness, and variable transformations to mitigate modeling issues. 
+
+{\bf UCLA MAE Lab}\\
+ Helped create a script for Python that parses through different news websites to collect the count of specific words while looking at related business articles. These articles are then used to perform a sentiment analysis on current economic conditions. Also worked on creating a script that uses a Twitter API to perform similar analysis.
+
+\end{rSection}
+
+%----------------------------------------------------------------------------------------
+%	TECHNICAL STRENGTHS SECTION
+%----------------------------------------------------------------------------------------
+
+\begin{rSection}{Technical Strengths}
+
+\begin{tabular}{ @{} >{\bfseries}l @{\hspace{6ex}} l }
+Software \& Tools & R, Python, STATA, Tableau, QGIS, SQL, Denodo (VQL), LaTeX\\
+Modeling and Analysis \ & Asset Pricing (Fama-French, CAPM, Mutli-factor model)\\
+\ & Risk Modeling (Monte-Carlo Simulations, Value at Risk, etc)\\
+\ & Econometrics (Regression, Logit/Probit, ANOVA), Forecasting (ARIMA, VAR,\\
+Technical Knowledge \ &  SSM), Machine Learning (SVM, Neural Network, Random Forest), RegEx, \\
+\ & Big Data (PCA, Ridge/LASSO, Naïve Bayes, clustering)\\
+\end{tabular}
+
+\end{rSection}
+
+\end{document}
