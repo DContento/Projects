@@ -1,6 +1,6 @@
 # Past-Projects
 School or work projects that I have personally contributed too or solely worked on. 
-Code is broken into 3 sections.
+Code is broken into 4 sections.
 1) R Code 
 2) Python 
 3) SQL queries 
