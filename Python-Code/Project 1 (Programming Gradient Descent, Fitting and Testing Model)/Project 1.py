@@ -3,11 +3,7 @@ import matplotlib.pyplot as plt
 from getDataset import getDataSet
 from sklearn.linear_model import LogisticRegression
 
-# Starting codes
-
-# Fill in the codes between "%PLACEHOLDER#start" and "PLACEHOLDER#end"
-
-# step 1: generate dataset
+# generate dataset
 # 250 samples in total.
 
 [X, y] = getDataSet()  # note that y contains only 1s and 0s,
@@ -60,7 +56,7 @@ func_DisplayData(testX, testY, 3, 'testing samples')
 plt.show()
 
 
-#  step 2: train logistic regression models
+#train logistic regression models
 ###############################################
 #train a logistic model using the training data: trainX, and trainY.
 
@@ -120,10 +116,7 @@ print('Score of SK learn method:', scikit_score)
 print('Score of Gradient Descent method:', my_score)
 ###############################################
 
- 
- 
-# step 3: Use the model to get class labels of testing samples.
- 
+#Use the model to get class labels of testing samples.
 
 ###############################################
 # codes for making prediction, 
@@ -140,7 +133,7 @@ sklearnyhat = clf.predict(testX)
 ###############################################
 
 
-# step 4: evaluation
+# evaluation
 # compare predictions yHat and and true labels testy to calculate average error and standard deviation
 #gradient descent average error
 testYDiff = np.abs(gdyHat - testY)
