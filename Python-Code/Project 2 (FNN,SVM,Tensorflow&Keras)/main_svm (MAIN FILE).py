@@ -29,7 +29,7 @@ y_train=
 # subsets for validation
 x_validation= 
 y_validation= 
-#############placeholder end #######################
+####################################
 
 
 ## Model selection over validation set
@@ -53,7 +53,7 @@ plt.xlabel('c values')
 plt.ylabel('error')
 #plt.xticks(c_range)
 plt.show()
-#############placeholder end #######################
+####################################
 
 ############# Figure 2 #######################
 kernel_types = ['linear', 'poly', 'rbf']
@@ -70,7 +70,7 @@ plt.xlabel('Kernel')
 plt.ylabel('error')
 plt.xticks(kernel_types)
 plt.show()
-#############placeholder end #######################
+###################################
 
 
 ## Selecting the best model and applying it over the testing subset 
@@ -79,7 +79,7 @@ best_kernel = 'poly'
 best_c = 1 # poly had many that were the "best"
 model = svm.SVC(kernel=best_kernel, C=best_c)
 model.fit(X=x_train, y=y_train)
-############# placeholder end #######################
+####################################
 
 
 ## Evaluating results in terms of accuracy, real, or precision. 
@@ -94,7 +94,7 @@ print(conf_matrix)
 print("Average Accuracy: {}".format(accuracy))
 print("Per-Class Precision: {}".format(precision_array))
 print("Per-Class Recall: {}".format(recall_array))
-#############placeholder end #######################
+####################################
 
 
 
