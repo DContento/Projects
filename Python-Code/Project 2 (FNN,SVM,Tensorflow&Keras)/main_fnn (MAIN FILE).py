@@ -15,7 +15,7 @@ import data_helpers
 import func_two_layer_fc
 
 ####################################################################
-############## step-0: setting parameters       ####################
+##############         setting parameters       ####################
 ####################################################################
 
 # Model parameters as external flags
@@ -42,7 +42,7 @@ CLASSES = 10
 beginTime = time.time()
 
 ####################################################################
-############## step-1: load data              ####################
+##############           load data              ####################
 ####################################################################
 
 # Put logs for each run in separate directory
@@ -57,12 +57,11 @@ logdir = FLAGS.train_dir + '/' + datetime.now().strftime('%Y%m%d-%H%M%S') + '/'
 data_sets = data_helpers.load_data()
 
 ####################################################################
-############## step-2: Prepare the Tensorflow graph ################ 
+##############      Prepare the Tensorflow graph    ################ 
 ####################################################################
 
 # -----------------------------------------------------------------------------
-# Prepare the Tensorflow graph
-# (We're only defining the graph here, no actual calculations taking place)
+# Preparing the Tensorflow graph
 # -----------------------------------------------------------------------------
 
 # Define input placeholders
@@ -90,7 +89,7 @@ summary = tf.summary.merge_all()
 saver = tf.train.Saver()
 
 # -----------------------------------------------------------------------------
-# Run the TensorFlow graph
+# TensorFlow graph
 # -----------------------------------------------------------------------------
 
 with tf.Session() as sess:
