@@ -1,6 +1,9 @@
 👋 Hi, I’m @DContento
-👀 I’m interested in data analytics with an emhpasis on econometrics
+
+👀 I’m interested in data analytics with an emphasis on econometrics
+
 🌱 I’m currently learning about Natural language processing (NLP)
+
 📫 Feel free to reach me at DavidFContento@gmail.com
 
 # Projects
